@@ -9,7 +9,7 @@ import { buildSign } from './entities/sign';
 import { DEFAULT_LOOK } from './player/catLook';
 import { CatModel } from './player/catModel';
 import { facingFromYaw, PlayerController } from './player/playerController';
-import { TUNING } from './player/tuning';
+import { TOUCH_PLAYER, TUNING } from './player/tuning';
 import type { Level } from './world/level';
 import { buildLevelMesh } from './world/levelMesh';
 import { MaterialLibrary } from './world/materials';
@@ -76,10 +76,10 @@ export class PlayScene {
   fixedUpdate(dt: number): void {
     const { input, player: p } = this;
     const dir = this.camera.moveIntent(input.moveAxes());
+    p.useTuning(input.touch.active ? TOUCH_PLAYER : TUNING.player);
     p.step({
       x: dir.x, z: dir.z,
-      jumpPressed: input.wasPressed('Space'), jumpHeld: input.isDown('Space'),
-      dashPressed: input.wasPressed('ShiftLeft') || input.wasPressed('ShiftRight'),
+      jumpPressed: input.jumpPressed(), jumpHeld: input.jumpHeld(), dashPressed: input.dashPressed(),
     }, dt);
 
     const feet = new THREE.Vector3().fromArray(p.pos);
@@ -161,7 +161,8 @@ export class PlayScene {
       const rightX = -Math.cos(facing), rightZ = Math.sin(facing);
       wallSide = -(p.wallNormal[0] * rightX + p.wallNormal[2] * rightZ) > 0 ? 1 : -1;
     }
-    this.cat.update(dt, { speed: Math.hypot(p.vel[0], p.vel[2]), vy: p.vel[1], state: p.state, wallSide });
+    const speed = Math.hypot(p.vel[0], p.vel[2]);
+    this.cat.update(dt, { speed, vy: p.vel[1], state: p.state, wallSide });
 
     const ground = this.level.collision.groundBelow(this.catPos.x, this.catPos.z, this.catPos.y + 0.05, 0.15);
     this.shadow.visible = ground !== null && p.state !== 'ledge';
@@ -174,7 +175,10 @@ export class PlayScene {
     }
 
     for (const c of this.checkpoints) c.update(dt);
-    this.camera.update(dt, this.input, this.catPos);
+    // On touch, the camera swings back behind the cat when the player isn't steering it.
+    const touch = this.input.touch;
+    const follow = touch.active && touch.secondsSinceLook > TUNING.touch.followDelay ? { facing, speed } : undefined;
+    this.camera.update(dt, this.input, this.catPos, follow);
     this.sky.update(dt, this.camera.position);
     this.sky.followShadow(this.catPos);
     this.materials.update(this.time);

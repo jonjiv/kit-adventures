@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { OBSTACLE as O } from '../scripts/obstacles';
 import { NO_INPUT, PlayerController, type MoveIntent } from '../src/player/playerController';
-import { TUNING } from '../src/player/tuning';
+import { TOUCH_PLAYER, TUNING, type PlayerTuning } from '../src/player/tuning';
 import { CollisionWorld, type Collider } from '../src/world/collision';
 import type { Vec3 } from '../src/world/levelFormat';
 
@@ -10,6 +10,9 @@ const HALF = TUNING.player.width / 2;
 const box = (min: Vec3, max: Vec3, grip = true): Collider => ({ min, max, blocksCamera: true, grip });
 const FLOOR = box([-50, -1, -50], [50, 0, 50]);
 
+/** Movement numbers the test cat uses (keyboard or the more forgiving touch ones). */
+let tuning: PlayerTuning = TUNING.player;
+
 /** Floor before x = 0 and after x = gap, with nothing between. */
 const pit = (gap: number) => [box([-50, -1, -5], [0, 0, 5]), box([gap, -1, -5], [gap + 50, 0, 5])];
 
@@ -17,7 +20,7 @@ interface Run { p: PlayerController; fell: boolean; maxY: number; events: Set<st
 
 /** Plays the cat for some frames. `ctl` says what is pressed each frame. Falling below y = -5 counts as a fall. */
 function play(colliders: Collider[], spawn: Vec3, frames: number, ctl: (p: PlayerController, f: number) => Partial<MoveIntent> = () => ({})): Run {
-  const p = new PlayerController(new CollisionWorld(colliders), spawn, 0, TUNING.player, -5);
+  const p = new PlayerController(new CollisionWorld(colliders), spawn, 0, tuning, -5);
   const run: Run = { p, fell: false, maxY: -Infinity, events: new Set() };
   for (let f = 0; f < frames && !run.fell; f++) {
     p.step({ ...NO_INPUT, ...ctl(p, f) }, DT);
@@ -183,7 +186,13 @@ describe('parkour moves', () => {
   });
 });
 
-describe('every obstacle needs its move, and the move is enough', () => {
+// Touch play has more forgiving timings, so every obstacle is checked with both sets of numbers.
+describe.each([['keyboard', TUNING.player], ['touch', TOUCH_PLAYER]] as const)('every obstacle needs its move, and the move is enough (%s)', (_name, numbers) => {
+  beforeAll(() => {
+    tuning = numbers;
+    return () => { tuning = TUNING.player; };
+  });
+
   it(`hurdles (${O.hurdle} m): too tall to walk or climb, easy to jump`, () => {
     const hurdle = box([2, 0, -5], [2.5, O.hurdle, 5]);
     expect(play([FLOOR, hurdle], [0, 0, 0], 120, () => ({ x: 1 })).p.pos[0]).toBeLessThan(2);

@@ -132,6 +132,253 @@ canvas {
   transition: opacity 1s;
 }
 
+.controls-hint[hidden] {
+  display: none;
+}
+
 .controls-hint.faded {
   opacity: 0;
+}
+
+/* ---------- Menus: buttons only for touch, small buttons, touch settings ---------- */
+
+.touch-only {
+  display: none;
+}
+
+body.touch-mode .touch-only {
+  display: inline-block;
+}
+
+.start-main,
+.settings {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.start-main[hidden],
+.settings[hidden] {
+  display: none;
+}
+
+.small-button,
+.setting-button {
+  min-height: 56px;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 14px;
+  background: #e4e0f4;
+  color: #33305a;
+  font-family: var(--ui-font);
+  font-size: 20px;
+  font-weight: bold;
+  box-shadow: 0 4px 0 #b4aed0;
+  cursor: pointer;
+}
+
+.small-button:active,
+.setting-button:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #b4aed0;
+}
+
+.setting-button {
+  white-space: nowrap;
+}
+
+.setting-button.current {
+  background: #7ad86a;
+  box-shadow: 0 4px 0 #4a9a3a;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.setting-label {
+  min-width: 90px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* Small screens in landscape (phones): squeeze the panel so it fits. */
+@media (max-height: 500px) {
+  .start-panel {
+    gap: 10px;
+    padding: 14px 22px;
+    max-height: calc(100% - 20px);
+    box-sizing: border-box;
+    overflow-y: auto;
+  }
+
+  .start-title {
+    font-size: 28px;
+  }
+
+  .level-button {
+    min-height: 60px;
+    font-size: 21px;
+  }
+
+  .start-main,
+  .settings {
+    gap: 10px;
+  }
+
+  .controls-hint {
+    font-size: 16px;
+  }
+}
+
+/* ---------- On-screen touch controls ---------- */
+
+.touch-ui {
+  position: absolute;
+  inset: 0;
+  display: none;
+  pointer-events: none;
+  --pad: 26px;
+}
+
+body.touch-mode .touch-ui {
+  display: block;
+}
+
+body.touch-mode .fps {
+  bottom: auto;
+  top: calc(12px + env(safe-area-inset-top));
+  left: calc(12px + env(safe-area-inset-left));
+}
+
+.touch-button {
+  position: absolute;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 4px solid rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  background: rgba(40, 40, 80, 0.3);
+  color: #fff;
+  font-family: var(--ui-font);
+  font-weight: bold;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-ui.playing .touch-button {
+  display: flex;
+}
+
+.touch-button.pressed {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(0.94);
+}
+
+.touch-jump {
+  width: var(--jump-size);
+  height: var(--jump-size);
+  right: calc(var(--pad) + env(safe-area-inset-right));
+  bottom: calc(var(--pad) + env(safe-area-inset-bottom));
+  font-size: calc(var(--jump-size) * 0.24);
+}
+
+/* Just above and to the left of Jump. */
+.touch-dash {
+  width: var(--dash-size);
+  height: var(--dash-size);
+  right: calc(var(--pad) + var(--jump-size) * 0.85 + env(safe-area-inset-right));
+  bottom: calc(var(--pad) + var(--jump-size) * 0.8 + env(safe-area-inset-bottom));
+  font-size: calc(var(--dash-size) * 0.24);
+}
+
+.touch-pause {
+  width: 72px;
+  height: 72px;
+  top: calc(14px + env(safe-area-inset-top));
+  right: calc(14px + env(safe-area-inset-right));
+}
+
+.left-handed .touch-jump {
+  right: auto;
+  left: calc(var(--pad) + env(safe-area-inset-left));
+}
+
+.left-handed .touch-dash {
+  right: auto;
+  left: calc(var(--pad) + var(--jump-size) * 0.85 + env(safe-area-inset-left));
+}
+
+.touch-stick {
+  position: absolute;
+  display: none;
+  width: var(--stick-size);
+  height: var(--stick-size);
+  margin: calc(var(--stick-size) / -2) 0 0 calc(var(--stick-size) / -2);
+  border: 4px solid rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  background: rgba(40, 40, 80, 0.22);
+  box-sizing: border-box;
+}
+
+.touch-stick.shown {
+  display: block;
+}
+
+.touch-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  height: 46%;
+  margin: -23% 0 0 -23%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* ---------- "Turn your device sideways" (phones and tablets held upright) ---------- */
+
+.rotate-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px;
+  background: #4aa8ff;
+  color: #fff;
+  font-size: 30px;
+  font-weight: bold;
+  text-align: center;
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+  .rotate-screen {
+    display: flex;
+  }
+}
+
+.rotate-phone {
+  width: 70px;
+  height: 120px;
+  border: 8px solid #fff;
+  border-radius: 16px;
+  box-sizing: border-box;
+  animation: turn-phone 2.4s ease-in-out infinite;
+}
+
+@keyframes turn-phone {
+  0%, 20% { transform: rotate(0deg); }
+  50%, 80% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
 }

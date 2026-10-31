@@ -147,6 +147,51 @@ export const TUNING = {
     sensitivity: 0.0025,
   },
 
+  /** On-screen controls for iPads and phones. Sizes are in screen pixels at "Medium". */
+  touch: {
+    /** How far the joystick knob moves from its center. */
+    stickRadius: 60,
+    /** Share of the radius that counts as nothing (so a resting thumb doesn't walk). */
+    stickDeadZone: 0.15,
+    /** Share of the radius where the stick counts as fully pushed (full run speed). */
+    stickFullAt: 0.75,
+    jumpButtonSize: 96,
+    /** At "Small" this is still over 72 px. */
+    dashButtonSize: 86,
+    /** Button size settings. */
+    sizeScale: { small: 0.85, medium: 1, large: 1.2 },
+    /** Radians of turn per pixel dragged, a bit slower than the mouse feels. */
+    lookSensitivity: 0.0045,
+    /** Camera drag speed settings. */
+    cameraSpeedScale: { slow: 0.65, normal: 1, fast: 1.4 },
+    /** The camera starts swinging back behind the cat this long after the last look drag. */
+    followDelay: 0.8,
+    /** How fast it swings behind the cat when running at full speed, in radians per second. */
+    followTurnSpeed: 1.6,
+    /** How quickly it tips back to the normal height angle (higher is quicker). */
+    followPitchSpeed: 1.5,
+    /** More forgiving moves on touch (replace the player numbers above). */
+    player: {
+      coyoteTime: 0.18,
+      jumpBuffer: 0.18,
+      /** Wall runs grab from a wider angle. */
+      wallRunMinInto: 0.08,
+      wallRunMinAlong: 0.28,
+    },
+  },
+
+  /** Lighter graphics on phones and tablets, to keep 60 fps. */
+  graphics: {
+    maxPixelRatio: 2,
+    mobileMaxPixelRatio: 1.5,
+    shadowMapSize: 2048,
+    mobileShadowMapSize: 1024,
+    /** Fog starts and ends this much closer on mobile (shorter view distance). */
+    mobileViewDistance: 0.7,
+    /** Share of particles kept on mobile. */
+    mobileParticles: 0.5,
+  },
+
   /** Free-fly camera for the level editor. */
   fly: {
     speed: 10,
@@ -157,6 +202,9 @@ export const TUNING = {
 };
 
 export type PlayerTuning = typeof TUNING.player;
+
+/** The player numbers used while playing with touch controls. */
+export const TOUCH_PLAYER: PlayerTuning = { ...TUNING.player, ...TUNING.touch.player };
 
 /** Gravity and launch speeds that give the jump heights and timing above. */
 export function jumpPhysics(t: PlayerTuning) {

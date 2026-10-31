@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { IS_MOBILE } from '../engine/device';
+import { TUNING } from '../player/tuning';
 import type { ThemeStyle } from './themes';
 
 const CLOUD_HEIGHT = 42;
@@ -54,7 +56,8 @@ export class Sky {
     this.sunDir = new THREE.Vector3(...style.sunDir).normalize();
     this.sun = new THREE.DirectionalLight(style.sunColor, style.sunIntensity);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
+    const shadowSize = IS_MOBILE ? TUNING.graphics.mobileShadowMapSize : TUNING.graphics.shadowMapSize;
+    this.sun.shadow.mapSize.set(shadowSize, shadowSize);
     const cam = this.sun.shadow.camera;
     cam.left = cam.bottom = -40;
     cam.right = cam.top = 40;
@@ -70,7 +73,8 @@ export class Sky {
   }
 
   applyFog(scene: THREE.Scene, style: ThemeStyle): void {
-    scene.fog = new THREE.Fog(style.fog, style.fogNear, style.fogFar);
+    const view = IS_MOBILE ? TUNING.graphics.mobileViewDistance : 1;
+    scene.fog = new THREE.Fog(style.fog, style.fogNear * view, style.fogFar * view);
     scene.background = new THREE.Color(style.skyHorizon);
   }
 

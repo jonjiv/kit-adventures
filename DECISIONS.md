@@ -2,6 +2,22 @@
 
 Choices made where PLAN.md left things open. Each one aims for the simplest option that is fun for a 9-year-old.
 
+## Touch controls (Phase 8, done early on request)
+
+Feedback: "implement mobile device touchscreen controls." Everything in the plan's touch section that the game has so far is in. Phases 4 to 7 come later and will follow these rules.
+
+- **Touch switches on with the first touch** (a touch event or `pointerType "touch"`), not from screen size, and hides again when a key is pressed or the mouse is used. A touch laptop can switch back and forth.
+- **Joystick** appears where the left thumb lands, and moves with it while it's held. A small wiggle in the middle (15% of the ring) does nothing, and the stick counts as fully pushed at 75% of the ring, so small thumbs reach full speed easily.
+- **Look** by dragging on the right half. It turns a bit slower than the mouse. **Auto-follow:** 0.8 s after the last drag, the camera swings behind the cat while it runs. It turns hardest when the cat runs sideways and not at all when it runs toward the camera, so it never spins around. It also tips back to the normal height.
+- **Buttons:** JUMP is 96 px, DASH is 86 px just above and to the left of it, and Pause is 72 px in the top right. They're see-through and kept clear of the notch and home bar. Multi-touch works, so you can run, look and jump at the same time. A press stays held even if the thumb slides off the button.
+- **More forgiving on touch:** coyote time and jump buffer are 0.18 s (keyboard: 0.12), and wall runs start from a wider angle. The obstacle tests now run with both sets of numbers, so the touch numbers can't make any obstacle skippable.
+- **Pause actually pauses now, with touch, keyboard or mouse.** The world waits while the start panel is up, so freeing the mouse with Esc pauses too. Before, the cat kept standing in a live world.
+- **Settings** (in the pause panel, touch only, saved on the device): button size Small, Medium or Large, camera speed Slow, Normal or Fast, and right or left hand (left swaps the joystick and buttons). The plan puts Settings in Phase 6; this small page will move into the real Settings menu then.
+- **Landscape only:** held upright, a phone or tablet shows "Turn your device sideways" with a turning phone picture, and the game pauses. Where the browser allows it (Android, some iPads), Tap to play also goes full screen and locks landscape. iPhones don't allow that, so adding the game to the home screen is the way to get full screen there.
+- **Home screen app:** a web app manifest plus icons. The icon is a kitten face drawn in code by `scripts/make-icons.ts` (`npm run icons`).
+- **Phones and tablets get lighter graphics:** the sharpness (pixel ratio) is capped at 1.5, the sun shadow uses a smaller texture, fog comes in 30% closer (shorter view distance), and there are half as many particles. These numbers are in `tuning.ts` under `graphics`.
+- **Not built yet, because the parts don't exist:** sound unlocking on the first tap (the game has no sound until Phase 6), touch for the cat maker and shop (Phase 6), and the editor's touch controls (Phase 7). Each phase will add these.
+
 ## Flicker fix (after Phase 3)
 
 Feedback: "two textures on top of each other flicker" ("z-fighting": two surfaces on the exact same plane).

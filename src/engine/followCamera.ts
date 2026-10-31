@@ -42,17 +42,34 @@ export class FollowCamera {
     return { x: -s * axes.y + c * axes.x, z: -c * axes.y - s * axes.x };
   }
 
-  update(dt: number, input: Input, focus: THREE.Vector3): void {
+  /**
+   * `follow` (on touch, when the player isn't dragging) swings the camera
+   * back behind the cat while it runs, so young players needn't steer it.
+   */
+  update(dt: number, input: Input, focus: THREE.Vector3, follow?: { facing: number; speed: number }): void {
     const cam = TUNING.camera;
-    const { dx, dy } = input.takeMouse();
-    this.yaw -= dx * TUNING.mouse.sensitivity;
+    const look = input.takeLook();
+    this.yaw -= look.yaw;
     this.pitch = THREE.MathUtils.clamp(
-      this.pitch + dy * TUNING.mouse.sensitivity,
+      this.pitch + look.pitch,
       THREE.MathUtils.degToRad(cam.minPitch),
       THREE.MathUtils.degToRad(cam.maxPitch),
     );
+    if (follow) this.autoFollow(dt, follow.facing, follow.speed);
     this.distance = THREE.MathUtils.clamp(this.distance + input.takeWheel() * cam.zoomStep, cam.minDistance, cam.maxDistance);
     this.place(focus, dt);
+  }
+
+  private autoFollow(dt: number, facing: number, speed: number): void {
+    const t = TUNING.touch;
+    const amount = Math.min(1, speed / TUNING.player.runSpeed);
+    const behind = facing - Math.PI;
+    const diff = Math.atan2(Math.sin(behind - this.yaw), Math.cos(behind - this.yaw));
+    // sin() turns hardest when the cat runs sideways and not at all when it runs
+    // straight at the camera, so the view never spins around wildly.
+    this.yaw += Math.sin(diff) * t.followTurnSpeed * amount * dt;
+    const rest = THREE.MathUtils.degToRad(TUNING.camera.pitch);
+    this.pitch += (rest - this.pitch) * (1 - Math.exp(-t.followPitchSpeed * amount * dt));
   }
 
   private place(focus: THREE.Vector3, dt: number): void {

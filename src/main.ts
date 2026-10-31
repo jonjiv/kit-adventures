@@ -17,7 +17,7 @@ const LEVELS = [
 async function start(app: HTMLElement) {
   const camera = new THREE.PerspectiveCamera(TUNING.camera.fov, 1, TUNING.camera.near, TUNING.camera.far);
   const renderer = createRenderer(app, camera);
-  const input = new Input(renderer.domElement);
+  const input = new Input(renderer.domElement, app);
 
   let play: PlayScene;
   let loading = false;
@@ -40,7 +40,8 @@ async function start(app: HTMLElement) {
   runLoop(
     new FixedStepper(TUNING.physicsHz, TUNING.maxFrameTime),
     (step) => {
-      if (!loading) play.fixedUpdate(step);
+      // The world waits while the start panel (pause) is showing.
+      if (!loading && input.playing) play.fixedUpdate(step);
       input.endStep();
     },
     (alpha, dt) => {

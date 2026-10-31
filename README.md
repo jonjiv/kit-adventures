@@ -28,6 +28,19 @@ Movement and feel numbers live in `src/player/tuning.ts`.
 | Zoom | Mouse wheel |
 | Show/hide fps | F3 |
 
+On an iPad or phone, touch controls appear after the first touch (hold it sideways):
+
+| Action | Touch |
+| --- | --- |
+| Run | Put your left thumb down anywhere on the left half: a joystick appears under it |
+| Look | Drag on the right half (the camera also swings behind the cat by itself) |
+| Jump / double jump | JUMP button, bottom right |
+| Dash / pounce | DASH button, above JUMP |
+| Wall run, wall jump, ledges | Same as the keyboard: hold the joystick toward the wall, tap JUMP |
+| Pause | Pause button, top right. The pause panel has Settings: button size, camera speed and left-handed mode |
+
+To try it on a real iPad or phone on the same Wi-Fi: `npm run dev -- --host`, then open the "Network" address it prints. You can also add the game to the home screen (Share > Add to Home Screen) to open it full screen like an app.
+
 ## Play online
 
 https://jonjiv.github.io/kit-adventures/ (rebuilt automatically by `.github/workflows/deploy.yml` on every push to `master`; tests must pass first).

@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import { TUNING } from '../player/tuning';
+import { IS_MOBILE } from './device';
+
+/** Fewer particles on phones and tablets. */
+const PARTICLE_SHARE = IS_MOBILE ? TUNING.graphics.mobileParticles : 1;
 
 interface Particle {
   mesh: THREE.Mesh;
@@ -44,12 +49,13 @@ export class Particles {
   }
 
   burst(at: THREE.Vector3, o: BurstOptions): void {
-    for (let i = 0; i < o.count; i++) {
+    const count = Math.max(1, Math.round(o.count * PARTICLE_SHARE));
+    for (let i = 0; i < count; i++) {
       const mesh = this.free.pop() ?? new THREE.Mesh(this.geometry);
       mesh.material = this.material(o.colors[i % o.colors.length]);
       mesh.position.copy(at);
       mesh.rotation.set(Math.random() * 3, Math.random() * 3, 0);
-      const angle = (i / o.count) * Math.PI * 2 + Math.random() * 0.5;
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
       const lift = o.flat ? 0.1 : Math.random() * 2 - 0.6;
       const vel = new THREE.Vector3(Math.cos(angle), lift, Math.sin(angle)).normalize().multiplyScalar(o.speed * (0.6 + Math.random() * 0.6));
       vel.y += o.up ?? 0;

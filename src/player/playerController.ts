@@ -97,6 +97,11 @@ export class PlayerController {
     this.airJumpsLeft = tuning.airJumps;
   }
 
+  /** Switches movement numbers (touch play uses more forgiving ones). */
+  useTuning(tuning: PlayerTuning): void {
+    this.t = tuning;
+  }
+
   get onGround(): boolean {
     return this.state === 'ground';
   }

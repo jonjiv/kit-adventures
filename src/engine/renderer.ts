@@ -1,8 +1,11 @@
 import * as THREE from 'three';
+import { TUNING } from '../player/tuning';
+import { IS_MOBILE } from './device';
 
 export function createRenderer(container: HTMLElement, camera: THREE.PerspectiveCamera): THREE.WebGLRenderer {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const g = TUNING.graphics;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? g.mobileMaxPixelRatio : g.maxPixelRatio));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
