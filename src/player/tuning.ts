@@ -44,8 +44,74 @@ export const TUNING = {
     coyoteTime: 0.12,
     /** Pressing jump this long before landing still jumps. */
     jumpBuffer: 0.12,
-    /** Falling below this height sends the cat back to the start. */
+    /** Falling below this height sends the cat back (levels can set their own). */
     killHeight: -10,
+
+    // Wall run: jump at a wall while holding toward it at an angle.
+    /** Longest wall run. */
+    wallRunTime: 1.2,
+    /** Speed along the wall (faster than running, it feels like a boost). */
+    wallRunSpeed: 9,
+    /** Gravity during a wall run, as a share of normal gravity, so the cat drops slowly. */
+    wallRunGravity: 0.22,
+    /** Little hop upward when a wall run starts. */
+    wallRunLift: 2.5,
+    /** A wall run only starts once the jump has slowed to this upward speed, so it begins high up. */
+    wallRunMaxRiseSpeed: 4,
+    /** ...and only if the cat isn't falling faster than this. */
+    wallRunMaxFallSpeed: 5,
+    /** How much the held direction must push into the wall (0 = along it, 1 = straight in). */
+    wallRunMinInto: 0.15,
+    /** How much the held direction must point along the wall. */
+    wallRunMinAlong: 0.35,
+    /** Wait before another wall run can start. */
+    wallRunCooldown: 0.3,
+    /** Time between paw prints on the wall. */
+    wallStepInterval: 0.11,
+
+    // Wall jump: Space while touching a wall in the air.
+    wallJumpHeight: 1.5,
+    /** Speed pushing away from the wall. */
+    wallJumpPush: 6.5,
+    /** Share of the speed along the wall that is kept. */
+    wallJumpKeep: 0.6,
+    /** Steering is weaker for this long after a wall jump, so the kick-off isn't cancelled. */
+    wallJumpLockTime: 0.2,
+    /** Share of normal air steering during that time. */
+    wallJumpControl: 0.25,
+    /** A wall jump still works this long after leaving a wall. */
+    wallCoyoteTime: 0.1,
+    /** Slowest fall when sliding down a wall while holding toward it. */
+    wallSlideSpeed: 3,
+    /**
+     * Holding this straight into a wall (0 to 1) makes Space a double jump
+     * (if one is left) instead of a wall jump, so you can jump up cliffs.
+     */
+    headOnWall: 0.8,
+
+    // Ledge grab: grabs automatically when falling with paws near a ledge.
+    /** How far above the cat's head a ledge can be grabbed. */
+    ledgeReach: 0.4,
+    /** Ledges lower than this above the feet are climbed or stepped instead. */
+    ledgeMinHeight: 0.45,
+    /** How far below the ledge top the cat's feet hang. */
+    ledgeHangDrop: 0.72,
+    /** Hang at least this long before holding forward climbs. */
+    ledgeMinHang: 0.15,
+    /** After dropping off a ledge, wait this long before grabbing again. */
+    ledgeRegrabDelay: 0.4,
+    climbTime: 0.32,
+    /** Walls up to this height are climbed automatically when running into them. */
+    autoClimbHeight: 1.05,
+    autoClimbTime: 0.22,
+
+    // Dash / pounce: Shift.
+    dashSpeed: 15,
+    dashTime: 0.16,
+    /** Speed kept after a dash ends. */
+    dashExitSpeed: 7.5,
+    /** Wait between dashes on the ground (in the air it's once per jump). */
+    dashCooldown: 0.5,
   },
 
   camera: {
@@ -92,5 +158,6 @@ export function jumpPhysics(t: PlayerTuning) {
     gravity,
     jumpSpeed: gravity * t.timeToApex,
     doubleJumpSpeed: Math.sqrt(2 * gravity * t.doubleJumpHeight),
+    wallJumpSpeed: Math.sqrt(2 * gravity * t.wallJumpHeight),
   };
 }

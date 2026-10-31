@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CollisionWorld, type Collider } from '../src/world/collision';
 
-const c = (min: [number, number, number], max: [number, number, number], blocksCamera = true): Collider => ({ min, max, blocksCamera });
+const c = (min: [number, number, number], max: [number, number, number], blocksCamera = true): Collider => ({ min, max, blocksCamera, grip: blocksCamera });
 
 describe('CollisionWorld', () => {
   const world = new CollisionWorld([

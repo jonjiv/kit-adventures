@@ -1,84 +1,86 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { testLevel } from '../scripts/build-levels';
+import { gardenLevel, gymLevel } from '../scripts/build-levels';
+import type { PathBuilder } from '../scripts/pathBuilder';
+import type { CollisionWorld } from '../src/world/collision';
 import { levelFromJson } from '../src/world/level';
-import { SKY_BARRIER_HEIGHT, validateLevel } from '../src/world/levelFormat';
-import { facingFromYaw, PlayerController } from '../src/player/playerController';
-import { TUNING } from '../src/player/tuning';
+import { SKY_BARRIER_HEIGHT, validateLevel, type LevelFile } from '../src/world/levelFormat';
 
-describe('Test Path level', () => {
-  const file = testLevel();
+/** True if something solid fills the whole column from the pit bottoms up to the sky. */
+function walledColumn(world: CollisionWorld, x: number, z: number): boolean {
+  const hits = world.overlapping([x - 0.05, 1, z - 0.05], [x + 0.05, SKY_BARRIER_HEIGHT - 1, z + 0.05])
+    .sort((a, b) => a.min[1] - b.min[1]);
+  let covered = 1;
+  for (const c of hits) {
+    if (c.min[1] > covered + 1e-6) return false;
+    covered = Math.max(covered, c.max[1]);
+  }
+  return covered >= SKY_BARRIER_HEIGHT - 1;
+}
+
+/** Every 1 m cell the cat could wander to from the start, ignoring heights, stopping only at full-height walls. */
+function reachable(file: LevelFile, world: CollisionWorld, start: [number, number]): Set<string> {
+  const seen = new Set<string>();
+  const queue: [number, number][] = [[Math.floor(start[0]), Math.floor(start[1])]];
+  seen.add(queue[0].join(','));
+  while (queue.length) {
+    const [cx, cz] = queue.pop()!;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, nz = cz + dz, key = `${nx},${nz}`;
+      if (seen.has(key) || nx < 0 || nz < 0 || nx >= file.size[0] || nz >= file.size[2]) continue;
+      if (walledColumn(world, nx + 0.5, nz + 0.5)) continue;
+      seen.add(key);
+      queue.push([nx, nz]);
+    }
+  }
+  return seen;
+}
+
+const LEVELS: [string, string, () => { file: LevelFile; builder: PathBuilder }][] = [
+  ['Garden Path', 'garden.json', gardenLevel],
+  ['Parkour Gym', 'gym.json', gymLevel],
+];
+
+describe.each(LEVELS)('%s', (_name, json, make) => {
+  const { file, builder } = make();
   const level = levelFromJson(file);
+  const world = level.collision;
+  const standsOnGround = (pos: number[]) =>
+    world.groundBelow(pos[0], pos[2], pos[1], 0.3) === pos[1] &&
+    world.overlapping([pos[0] - 0.3, pos[1], pos[2] - 0.3], [pos[0] + 0.3, pos[1] + 0.8, pos[2] + 0.3]).length === 0;
 
   it('is valid and matches the saved JSON (run "npm run levels" if this fails)', () => {
     expect(validateLevel(file)).toEqual([]);
-    const saved = JSON.parse(readFileSync(new URL('../public/levels/test.json', import.meta.url), 'utf8'));
+    const saved = JSON.parse(readFileSync(new URL(`../public/levels/${json}`, import.meta.url), 'utf8'));
     expect(saved).toEqual(JSON.parse(JSON.stringify(file)));
   });
 
-  it('starts the cat on solid ground', () => {
-    const [x, y, z] = level.start.pos;
-    expect(level.collision.groundBelow(x, z, y, 0.3)).toBe(y);
-    expect(level.collision.overlapping([x - 0.3, y, z - 0.3], [x + 0.3, y + 0.8, z + 0.3])).toHaveLength(0);
+  it('starts the cat, and puts every checkpoint, on solid ground with room to stand', () => {
+    expect(standsOnGround(level.start.pos)).toBe(true);
+    const checkpoints = file.objects.filter((o) => o.type === 'checkpoint');
+    expect(checkpoints.length).toBeGreaterThanOrEqual(5);
+    for (const c of checkpoints) expect(standsOnGround(c.pos), `checkpoint at ${c.pos.join(',')}`).toBe(true);
   });
 
-  it('can be finished by a scripted run using only run, jump and double jump', () => {
-    const p = new PlayerController(level.collision, level.start.pos, facingFromYaw(0));
-    interface Leg {
-      to: [number, number];
-      jumpWhen: () => boolean;
-      double?: boolean;
-      /** Stop at the target before the next leg (for small platforms). */
-      settle?: boolean;
-    }
-    const legs: Leg[] = [
-      { to: [20, 66], jumpWhen: () => p.pos[2] < 75.3 }, // up onto the deck
-      { to: [20, 50], jumpWhen: () => p.pos[2] < 60.7 }, // over the gap
-      { to: [18.5, 38], jumpWhen: () => p.pos[2] < 45.4, double: true, settle: true }, // up the ledge
-      { to: [18.5, 32.5], jumpWhen: () => p.pos[2] < 36.3, double: true, settle: true }, // stump 1
-      { to: [21.5, 28.5], jumpWhen: () => true, double: true, settle: true }, // stump 2
-      { to: [18.5, 24.5], jumpWhen: () => true, double: true, settle: true }, // stump 3
-      { to: [20, 13], jumpWhen: () => true, double: true, settle: true }, // the golden pad
-    ];
-    const log: string[] = [];
-    for (const [i, leg] of legs.entries()) {
-      let jumped = false, doubled = false, done = false;
-      for (let f = 0; f < 600 && !done; f++) {
-        const dx = leg.to[0] - p.pos[0], dz = leg.to[1] - p.pos[2];
-        const dist = Math.hypot(dx, dz);
-        const speed = Math.min(TUNING.player.runSpeed, dist * 3);
-        const press = (!jumped && p.onGround && leg.jumpWhen()) || (jumped && !doubled && !!leg.double && p.vel[1] <= 0);
-        if (press) {
-          if (jumped) doubled = true;
-          jumped = true;
-        }
-        p.step({
-          x: dist > 0 ? (dx / dist) * (speed / TUNING.player.runSpeed) : 0,
-          z: dist > 0 ? (dz / dist) * (speed / TUNING.player.runSpeed) : 0,
-          jumpPressed: press, jumpHeld: true,
-        }, 1 / 60);
-        expect(p.events, `fell during leg ${i + 1}: ${log.join(' ')}`).not.toContain('respawn');
-        const landedAfterJump = jumped && p.onGround && f > 5;
-        done = leg.settle ? landedAfterJump && dist < 0.35 && Math.hypot(p.vel[0], p.vel[2]) < 0.6 : landedAfterJump;
-      }
-      log.push(`leg ${i + 1} at ${p.pos.map((v) => v.toFixed(1)).join(',')}`);
-      expect(done, `stuck on leg ${i + 1}: ${log.join(' ')}`).toBe(true);
-    }
-    expect(p.pos[1]).toBeCloseTo(3.6, 1);
+  it('has no gaps in its walls: the scenery outside can never be reached', () => {
+    const seen = reachable(file, world, [level.start.pos[0], level.start.pos[2]]);
+    expect(seen.has(`${Math.floor(builder.goal[0])},${Math.floor(builder.goal[2])}`)).toBe(true);
+    expect(builder.outside.length).toBeGreaterThan(20);
+    const leaks = builder.outside.filter(([x, z]) => seen.has(`${Math.floor(x)},${Math.floor(z)}`));
+    expect(leaks).toEqual([]);
   });
 
-  it('has walls up to the sky all around the path, so nothing can be skipped', () => {
-    const solidAt = (x: number, y: number, z: number) =>
-      level.collision.overlapping([x - 0.01, y - 0.01, z - 0.01], [x + 0.01, y + 0.01, z + 0.01]).length > 0;
-    for (let y = -5; y < SKY_BARRIER_HEIGHT; y += 1) {
-      for (let z = 7; z <= 93; z += 0.5) {
-        expect(solidAt(13, y, z), `left side at y=${y} z=${z}`).toBe(true);
-        expect(solidAt(27, y, z), `right side at y=${y} z=${z}`).toBe(true);
-      }
-      for (let x = 14; x <= 26; x += 0.5) {
-        expect(solidAt(x, y, 93), `back at y=${y} x=${x}`).toBe(true);
-        expect(solidAt(x, y, 7), `end at y=${y} x=${x}`).toBe(true);
-      }
-    }
+  it('(the wall check does find leaks: without the invisible barriers, the outside is reachable)', () => {
+    const leaky = levelFromJson({ ...file, pieces: file.pieces.filter((p) => p.kind !== 'barrier') });
+    const seen = reachable(file, leaky.collision, [level.start.pos[0], level.start.pos[2]]);
+    expect(builder.outside.some(([x, z]) => seen.has(`${Math.floor(x)},${Math.floor(z)}`))).toBe(true);
+  });
+});
+
+describe('Garden Path', () => {
+  it('turns at least five times and is far longer than the old test level', () => {
+    const { file } = gardenLevel();
+    expect(file.objects.filter((o) => o.type === 'checkpoint')).toHaveLength(5);
+    expect(file.pieces.length).toBeGreaterThan(400);
   });
 });

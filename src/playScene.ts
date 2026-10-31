@@ -1,12 +1,15 @@
-// One level being played: the world, the cat, the camera and effects.
+// One level being played: the world, the cat, the camera, checkpoints and effects.
 
 import * as THREE from 'three';
 import { FollowCamera } from './engine/followCamera';
 import type { Input } from './engine/input';
 import { Particles } from './engine/particles';
+import { Checkpoint } from './entities/checkpoint';
+import { buildSign } from './entities/sign';
 import { DEFAULT_LOOK } from './player/catLook';
 import { CatModel } from './player/catModel';
 import { facingFromYaw, PlayerController } from './player/playerController';
+import { TUNING } from './player/tuning';
 import type { Level } from './world/level';
 import { buildLevelMesh } from './world/levelMesh';
 import { MaterialLibrary } from './world/materials';
@@ -15,17 +18,19 @@ import { THEME_STYLES } from './world/themes';
 
 const SPARKLE_COLORS = [0xfff27a, 0xffffff, 0xff9ad8, 0x8ae8ff];
 const DUST_COLORS = [0xffffff, 0xf2e8d8];
+const RAINBOW = [0xff5a5a, 0xffa040, 0xffe040, 0x60d860, 0x50a0ff, 0xb070f0];
 
 export class PlayScene {
   readonly scene = new THREE.Scene();
+  readonly player: PlayerController;
+  readonly camera: FollowCamera;
   private level: Level;
   private input: Input;
   private materials = new MaterialLibrary();
   private sky: Sky;
-  readonly player: PlayerController;
   private cat: CatModel;
-  readonly camera: FollowCamera;
   private particles = new Particles();
+  private checkpoints: Checkpoint[];
   private shadow: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
   private time = 0;
   private catPos = new THREE.Vector3();
@@ -42,8 +47,14 @@ export class PlayScene {
     this.sky.applyFog(this.scene, style);
     this.scene.add(this.sky.group, this.particles.group);
 
+    this.checkpoints = file.objects.filter((o) => o.type === 'checkpoint').map((o) => new Checkpoint(o));
+    for (const c of this.checkpoints) this.scene.add(c.group);
+    for (const o of file.objects) if (o.type === 'sign') this.scene.add(buildSign(o));
+
     const yaw = level.start.yaw ?? 0;
-    this.player = new PlayerController(level.collision, level.start.pos, facingFromYaw(yaw));
+    this.player = new PlayerController(
+      level.collision, level.start.pos, facingFromYaw(yaw), TUNING.player, file.killY ?? TUNING.player.killHeight,
+    );
     this.cat = new CatModel(DEFAULT_LOOK);
     this.scene.add(this.cat.root);
 
@@ -63,33 +74,70 @@ export class PlayScene {
   }
 
   fixedUpdate(dt: number): void {
-    const axes = this.input.moveAxes();
-    const dir = this.camera.moveIntent(axes);
-    this.player.step(
-      { x: dir.x, z: dir.z, jumpPressed: this.input.wasPressed('Space'), jumpHeld: this.input.isDown('Space') },
-      dt,
-    );
+    const { input, player: p } = this;
+    const dir = this.camera.moveIntent(input.moveAxes());
+    p.step({
+      x: dir.x, z: dir.z,
+      jumpPressed: input.wasPressed('Space'), jumpHeld: input.isDown('Space'),
+      dashPressed: input.wasPressed('ShiftLeft') || input.wasPressed('ShiftRight'),
+    }, dt);
 
-    const feet = new THREE.Vector3().fromArray(this.player.pos);
-    for (const e of this.player.events) {
-      if (e === 'jump') this.cat.trigger('jump');
-      if (e === 'doubleJump') {
-        this.cat.trigger('doubleJump');
-        this.particles.burst(feet.clone().setY(feet.y + 0.3), {
-          count: 14, colors: SPARKLE_COLORS, speed: 3, life: 0.5, size: 0.07, gravity: 2,
+    const feet = new THREE.Vector3().fromArray(p.pos);
+    const burst = (dy: number, colors: number[], count: number, speed: number, size: number) =>
+      this.particles.burst(feet.clone().setY(feet.y + dy), { count, colors, speed, life: 0.45, size, gravity: 2 });
+    for (const e of p.events) {
+      switch (e) {
+        case 'jump':
+        case 'climb':
+          this.cat.trigger(e);
+          break;
+        case 'doubleJump':
+          this.cat.trigger('doubleJump');
+          burst(0.3, SPARKLE_COLORS, 14, 3, 0.07);
+          break;
+        case 'wallJump':
+          this.cat.trigger('wallJump');
+          burst(0.4, SPARKLE_COLORS, 10, 2.5, 0.06);
+          break;
+        case 'dash':
+          this.cat.trigger('dash');
+          burst(0.3, DUST_COLORS, 8, 1.5, 0.06);
+          break;
+        case 'wallStep':
+          if (p.wallNormal) {
+            const n = p.wallNormal;
+            const h = TUNING.player.width / 2;
+            const at = feet.clone().add(new THREE.Vector3(-n[0] * h, 0.25 + Math.random() * 0.3, -n[2] * h));
+            this.particles.pawPrint(at, n, 0x5a3a3a);
+          }
+          break;
+        case 'land':
+          this.cat.trigger('land', p.landSpeed);
+          if (p.landSpeed > 6) {
+            this.particles.burst(feet.clone().setY(feet.y + 0.05), {
+              count: 10, colors: DUST_COLORS, speed: 2.2, life: 0.35, size: 0.06, flat: true,
+            });
+          }
+          break;
+        case 'respawn':
+          this.catPos.fromArray(p.pos);
+          this.camera.snap(this.catPos, p.facing - Math.PI);
+          break;
+      }
+    }
+    // A rainbow streak behind the dash.
+    if (p.state === 'dash') {
+      this.particles.burst(feet.clone().setY(feet.y + 0.35), { count: 2, colors: RAINBOW, speed: 0.3, life: 0.3, size: 0.07 });
+    }
+
+    for (const c of this.checkpoints) {
+      if (!c.active && c.touches(p.pos)) {
+        for (const other of this.checkpoints) other.deactivate();
+        c.activate();
+        p.setSpawn(c.pos, facingFromYaw(c.yaw));
+        this.particles.burst(new THREE.Vector3(c.pos[0], c.pos[1] + 1.6, c.pos[2]), {
+          count: 18, colors: RAINBOW, speed: 3.5, life: 0.7, size: 0.08, gravity: 3,
         });
-      }
-      if (e === 'land') {
-        this.cat.trigger('land', this.player.landSpeed);
-        if (this.player.landSpeed > 6) {
-          this.particles.burst(feet.clone().setY(feet.y + 0.05), {
-            count: 10, colors: DUST_COLORS, speed: 2.2, life: 0.35, size: 0.06, flat: true,
-          });
-        }
-      }
-      if (e === 'respawn') {
-        this.catPos.fromArray(this.player.pos);
-        this.camera.snap(this.catPos, this.player.facing - Math.PI);
       }
     }
   }
@@ -103,12 +151,20 @@ export class PlayScene {
       THREE.MathUtils.lerp(p.prevPos[2], p.pos[2], alpha),
     );
     const turn = Math.atan2(Math.sin(p.facing - p.prevFacing), Math.cos(p.facing - p.prevFacing));
+    const facing = p.prevFacing + turn * alpha;
     this.cat.root.position.copy(this.catPos);
-    this.cat.root.rotation.y = p.prevFacing + turn * alpha;
-    this.cat.update(dt, { speed: Math.hypot(p.vel[0], p.vel[2]), onGround: p.onGround, vy: p.vel[1] });
+    this.cat.root.rotation.y = facing;
+
+    // Which side the wall is on, so the cat leans into wall runs.
+    let wallSide = 0;
+    if (p.state === 'wallRun' && p.wallNormal) {
+      const rightX = -Math.cos(facing), rightZ = Math.sin(facing);
+      wallSide = -(p.wallNormal[0] * rightX + p.wallNormal[2] * rightZ) > 0 ? 1 : -1;
+    }
+    this.cat.update(dt, { speed: Math.hypot(p.vel[0], p.vel[2]), vy: p.vel[1], state: p.state, wallSide });
 
     const ground = this.level.collision.groundBelow(this.catPos.x, this.catPos.z, this.catPos.y + 0.05, 0.15);
-    this.shadow.visible = ground !== null;
+    this.shadow.visible = ground !== null && p.state !== 'ledge';
     if (ground !== null) {
       const height = this.catPos.y - ground;
       const fade = THREE.MathUtils.clamp(1 - height / 8, 0.25, 1);
@@ -117,10 +173,25 @@ export class PlayScene {
       this.shadow.material.opacity = 0.4 * fade;
     }
 
+    for (const c of this.checkpoints) c.update(dt);
     this.camera.update(dt, this.input, this.catPos);
     this.sky.update(dt, this.camera.position);
     this.sky.followShadow(this.catPos);
     this.materials.update(this.time);
     this.particles.update(dt);
+  }
+
+  dispose(): void {
+    this.scene.traverse((o) => {
+      if (o instanceof THREE.Mesh) {
+        o.geometry.dispose();
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        for (const m of mats) {
+          (m as THREE.MeshBasicMaterial).map?.dispose();
+          m.dispose();
+        }
+      }
+    });
+    this.materials.dispose();
   }
 }

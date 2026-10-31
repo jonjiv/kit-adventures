@@ -8,6 +8,8 @@ export interface Collider {
   max: Vec3;
   /** False for invisible barriers, so they don't push the camera around. */
   blocksCamera: boolean;
+  /** The cat can wall-run, wall-jump and ledge-grab on it (not on bushy hedges or barriers). */
+  grip: boolean;
 }
 
 const CELL = 4;

@@ -2,6 +2,37 @@
 
 Choices made where PLAN.md left things open. Each one aims for the simplest option that is fun for a 9-year-old.
 
+## Phase 2 playtest and Phase 3: parkour
+
+Feedback: "make the cat more cute; make levels longer with triple the obstacles; they can curve and turn; add the rest of the moves like wall jump."
+
+**Cuter cat**
+- Big-head proportions: the head is now as wide as the body. There are big sparkly eyes set low and wide (a dark pupil with a colored rim and two shines), pink blush, a little "w" mouth, a pale chest, short chubby legs, bigger pink ears and a fluffy ball on the tail tip.
+- New idle touches: ear twitches and a slow, curious head tilt.
+
+**Parkour moves** (all numbers in `src/player/tuning.ts`)
+- **Wall run.** Jump at a wall while holding toward it at an angle. It starts near the top of the jump, so the run happens high on the wall. It runs at 9 m/s (faster than running, which feels like a boost) for up to 1.2 s, slowly dropping, and leaves paw prints on the wall.
+- **Wall jump.** Press Space during a wall run, while sliding down a wall, or when touching a wall from the side. The cat kicks away and up with a twirl. Steering is weaker for 0.2 s afterwards so the kick isn't cancelled. Chimneys can be climbed by wall-jumping back and forth.
+- **Head-on rule.** If you're pushing *straight into* a wall and still have your double jump, Space double jumps instead of kicking off. Without this, double-jumping at a cliff threw kids backwards off it. Tests caught it.
+- **Double jump refills** on landing, a wall run, a wall jump or a ledge grab, but not just from touching a wall. Otherwise the cat could climb any wall by double-jumping forever.
+- **Wall slide.** Holding toward a wall while falling slows the fall to 3 m/s, which makes wall jumps easier to time. The plan doesn't ask for this; I added it to be forgiving.
+- **Ledge grab.** Grabs automatically when falling with paws near a ledge edge (up to 0.4 m above the head), as long as there's room to climb up. Space or holding toward the wall climbs; pulling away drops.
+- **Auto-climb.** Walls up to 1.05 m are climbed automatically when running into them.
+- **Dash / pounce.** Shift: a quick 15 m/s burst for 0.16 s with a rainbow streak. It works once per jump in the air (refilled like the double jump) and has a 0.5 s cooldown on the ground. Pressing jump during a ground dash jumps as soon as it ends.
+- **Grip.** Only brick, stone, wood and other hard surfaces can be wall-run, wall-jumped or grabbed. Bushy hedges, bushes and invisible barriers can't. This keeps levels un-skippable: you can't wall-run past a gap along the hedge. The wall-jump chimney's back is a hedge plug, so holding forward in the slot can't kick you out.
+
+**Levels**
+- **Built by a path builder** (`scripts/pathBuilder.ts`). It lays straight segments and 90° left/right corners. Big round hedge pillars soften each corner so it reads as a curve. It stops with an error if the path would run into itself.
+- **Garden Path** (replaces Test Path): 18 obstacles (three times as many as before) and five turns. It uses every move: hurdles, step up, gap, stumps, double-jump ledge, plank bridge, double-jump gap, wall-run pit, ledge-grab cliff, rising zig-zag platforms, dash gap, wall-jump chimney, stepping stones down, the double wall run (run, wall-jump across, run), a ledge-grab tower, big-gap stumps, an island hop and a crate staircase to the golden pad.
+- **Parkour Gym**: one station per move, each with a sign explaining it and a checkpoint in front of it.
+- **Level picker.** The "Click to play" panel has a big button for each level. Level Select comes properly in Phase 6.
+- **Pits** are holes down to water 10 m below. Falling sends you back to the last checkpoint.
+- **Obstacle sizes live in `scripts/obstacles.ts`.** Tests check that each size *needs* its move and that the move is *enough*. For example, the 12 m wall-run pit is beyond the longest possible jump (9.75 m with double jump and dash) but within a wall run (14.25 m). If a tuning change breaks an obstacle, a test says which one.
+- **The no-skipping test** flood-fills each level from the start and fails if any scenery outside the hedges is reachable. Another test confirms the check really does find leaks when the barriers are removed.
+
+**Pulled forward from Phase 4**
+- **Checkpoint flags.** With 18 obstacles, falling back to the very start would be miserable, so basic flags are in now. Touching one waves it in rainbow colors and makes it the respawn point. Phase 4 adds the chime and fade.
+
 ## Phase 1 playtest: new look and forced paths
 
 Feedback: "too on-the-nose Minecraft; more realistic, less blocky, rounded, N64 style; maps must force one path." PLAN.md now has a section recording this.

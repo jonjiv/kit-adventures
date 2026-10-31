@@ -46,6 +46,8 @@ export interface LevelObject {
   to?: Vec3;
   /** Facing direction in degrees (0 = looking toward -Z). */
   yaw?: number;
+  /** Words on a sign. */
+  text?: string;
 }
 
 export interface LevelFile {
@@ -54,6 +56,8 @@ export interface LevelFile {
   theme: Theme;
   /** Play area [x, y, z] from 0 to size. The cat can't leave it sideways. */
   size: Vec3;
+  /** Falling below this height sends the cat back to the last checkpoint. */
+  killY?: number;
   pieces: Piece[];
   objects: LevelObject[];
 }
@@ -100,6 +104,7 @@ export function validateLevel(data: unknown): string[] {
   if (!(isSize(d.size) && d.size.every((n, i) => n <= MAX_LEVEL_SIZE[i]))) {
     errors.push('The level size is missing or too big.');
   }
+  if (d.killY !== undefined && !isNum(d.killY)) errors.push('The fall height is broken.');
 
   if (!Array.isArray(d.pieces)) {
     errors.push('The level needs a pieces list.');
@@ -119,6 +124,8 @@ export function validateLevel(data: unknown): string[] {
         errors.push(`Object ${i + 1} needs a type and a position.`);
       } else if (obj.to !== undefined && !isVec3(obj.to)) {
         errors.push(`Object ${i + 1} has a broken "to" position.`);
+      } else if (obj.text !== undefined && typeof obj.text !== 'string') {
+        errors.push(`Object ${i + 1} has broken sign words.`);
       }
     });
   }
@@ -130,12 +137,37 @@ export const SKY_BARRIER_HEIGHT = 60;
 
 /** Helper for building levels in code. Corners can be given in any order. */
 export class LevelBuilder {
-  readonly size: Vec3;
+  size: Vec3;
+  killY: number | undefined;
   readonly pieces: Piece[] = [];
   readonly objects: LevelObject[] = [];
 
   constructor(size: Vec3) {
     this.size = size;
+  }
+
+  /**
+   * Moves everything so the lowest x and z sit at `margin`, and sets the level
+   * size to fit (with the same margin on the far side). Barriers count for height.
+   */
+  fitToContent(margin: number): void {
+    let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxY = 0, maxZ = -Infinity;
+    const grow = (x0: number, z0: number, x1: number, y1: number, z1: number) => {
+      minX = Math.min(minX, x0); minZ = Math.min(minZ, z0);
+      maxX = Math.max(maxX, x1); maxY = Math.max(maxY, y1); maxZ = Math.max(maxZ, z1);
+    };
+    for (const p of this.pieces) {
+      if (p.kind === 'cylinder') grow(p.pos[0] - p.radius, p.pos[2] - p.radius, p.pos[0] + p.radius, p.pos[1] + p.height, p.pos[2] + p.radius);
+      else if (p.kind === 'prop') grow(p.pos[0], p.pos[2], p.pos[0], p.pos[1], p.pos[2]);
+      else grow(p.pos[0], p.pos[2], p.pos[0] + p.size[0], p.pos[1] + p.size[1], p.pos[2] + p.size[2]);
+    }
+    const dx = margin - minX, dz = margin - minZ;
+    for (const p of this.pieces) { p.pos[0] += dx; p.pos[2] += dz; }
+    for (const o of this.objects) {
+      o.pos[0] += dx; o.pos[2] += dz;
+      if (o.to) { o.to[0] += dx; o.to[2] += dz; }
+    }
+    this.size = [Math.ceil(maxX - minX + margin * 2), Math.ceil(maxY + 1), Math.ceil(maxZ - minZ + margin * 2)];
   }
 
   private static span(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) {
@@ -194,6 +226,7 @@ export class LevelBuilder {
       name,
       theme,
       size: [...this.size],
+      ...(this.killY !== undefined ? { killY: this.killY } : {}),
       pieces: this.pieces.map((p) => structuredClone(p)),
       objects: this.objects.map((o) => structuredClone(o)),
     };

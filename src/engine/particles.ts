@@ -7,6 +7,8 @@ interface Particle {
   maxLife: number;
   size: number;
   gravity: number;
+  /** Stays flat on a surface (paw prints). */
+  flat?: boolean;
 }
 
 export interface BurstOptions {
@@ -56,6 +58,17 @@ export class Particles {
     }
   }
 
+  /** A paw print stuck flat on a wall (n points out of the wall), fading away. */
+  pawPrint(at: THREE.Vector3, n: [number, number, number], color: number): void {
+    const mesh = this.free.pop() ?? new THREE.Mesh(this.geometry);
+    mesh.material = this.material(color);
+    mesh.position.set(at.x + n[0] * 0.02, at.y, at.z + n[2] * 0.02);
+    mesh.rotation.set(0, Math.atan2(n[0], n[2]), 0);
+    this.group.add(mesh);
+    // A flattened diamond reads as a little paw pad from a distance.
+    this.live.push({ mesh, vel: new THREE.Vector3(), life: 1.2, maxLife: 1.2, size: 0.07, gravity: 0, flat: true });
+  }
+
   update(dt: number): void {
     for (let i = this.live.length - 1; i >= 0; i--) {
       const p = this.live[i];
@@ -69,8 +82,13 @@ export class Particles {
       p.vel.y -= p.gravity * dt;
       p.vel.multiplyScalar(1 - 2.5 * dt);
       p.mesh.position.addScaledVector(p.vel, dt);
+      const s = p.size * (p.life / p.maxLife);
+      if (p.flat) {
+        p.mesh.scale.set(s, s * 1.2, s * 0.15);
+        continue;
+      }
       p.mesh.rotation.y += dt * 6;
-      p.mesh.scale.setScalar(p.size * (p.life / p.maxLife));
+      p.mesh.scale.setScalar(s);
     }
   }
 }
