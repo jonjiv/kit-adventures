@@ -27,3 +27,7 @@ Movement and feel numbers live in `src/player/tuning.ts`.
 | Dash / pounce | Shift (once per jump in the air) |
 | Zoom | Mouse wheel |
 | Show/hide fps | F3 |
+
+## Play online
+
+https://jonjiv.github.io/kit-adventures/ (rebuilt automatically by `.github/workflows/deploy.yml` on every push to `master`; tests must pass first).
