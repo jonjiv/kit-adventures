@@ -31,8 +31,13 @@ export function buildSign(obj: LevelObject): THREE.Group {
   lines.forEach((line, i) => ctx.fillText(line, 180, 100 + (i - (lines.length - 1) / 2) * size * 1.1, 330));
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.68, 0.9), new THREE.MeshBasicMaterial({ map: tex }));
-  face.position.set(0, 1.55, 0.065);
+  // Keep the words clearly in front of the board, and nudge them toward the
+  // camera in the depth test, so they never flicker with the wood behind.
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.68, 0.9),
+    new THREE.MeshBasicMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+  );
+  face.position.set(0, 1.55, 0.08);
 
   group.add(post, board, face);
   post.castShadow = board.castShadow = true;

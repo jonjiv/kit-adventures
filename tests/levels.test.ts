@@ -5,6 +5,8 @@ import type { PathBuilder } from '../scripts/pathBuilder';
 import type { CollisionWorld } from '../src/world/collision';
 import { levelFromJson } from '../src/world/level';
 import { SKY_BARRIER_HEIGHT, validateLevel, type LevelFile } from '../src/world/levelFormat';
+import { surfaceRound, type SurfaceName } from '../src/world/materials';
+import { findOverlaps } from '../src/world/overlaps';
 
 /** True if something solid fills the whole column from the pit bottoms up to the sky. */
 function walledColumn(world: CollisionWorld, x: number, z: number): boolean {
@@ -60,6 +62,14 @@ describe.each(LEVELS)('%s', (_name, json, make) => {
     const checkpoints = file.objects.filter((o) => o.type === 'checkpoint');
     expect(checkpoints.length).toBeGreaterThanOrEqual(5);
     for (const c of checkpoints) expect(standsOnGround(c.pos), `checkpoint at ${c.pos.join(',')}`).toBe(true);
+  });
+
+  it('has no two different surfaces on the same plane (they would flicker)', () => {
+    const found = findOverlaps(file, (m) => surfaceRound(m as SurfaceName));
+    const report = found.slice(0, 10).map((o) =>
+      `${o.surfaces.join(' + ')} on the ${o.axis} = ${o.plane.toFixed(2)} plane near ${o.at.map((v) => v.toFixed(1)).join(', ')}` +
+      ` (pieces ${o.a} and ${o.b}, ${o.area.toFixed(1)} m²)`);
+    expect(report).toEqual([]);
   });
 
   it('has no gaps in its walls: the scenery outside can never be reached', () => {

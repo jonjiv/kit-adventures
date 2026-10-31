@@ -2,6 +2,17 @@
 
 Choices made where PLAN.md left things open. Each one aims for the simplest option that is fun for a 9-year-old.
 
+## Flicker fix (after Phase 3)
+
+Feedback: "two textures on top of each other flicker" ("z-fighting": two surfaces on the exact same plane).
+
+- **The main cause was a bug in `PathBuilder.floor()`.** Each path floor is dirt with a 0.4 m top layer (grass, wood, stone or brick). The top layer was meant to sit on the dirt, but it stretched all the way down to the ground (`Math.min` instead of `Math.max`). So every raised floor's sides had dirt and the top layer drawn on the same surface. Now they only touch.
+- **Pit sides.** The ground's cut edge and the hedge lay on the same plane. Holes in the ground now reach under the hedges and are 2 cm wider than the pits, so the hedge is always in front.
+- **Pit water** sits 3 cm inside the hole and above the bottom, so it never touches the walls, posts or floor exactly.
+- **Sign words** float 2 cm in front of the board (it was 5 mm), and the depth test is nudged toward the camera.
+- **The camera's near distance went from 0.1 m to 0.15 m** and the far distance from 1000 m to 700 m. That gives the depth test more precision far away. Both are in `tuning.ts`.
+- **Rule for future levels and the editor:** two *different* surfaces must never lie on the same plane facing the same way. `src/world/overlaps.ts` finds any that do, and a test runs it on every level. Faces pressed flat against another solid, and the same surface overlapping itself (which looks identical), don't count.
+
 ## Phase 2 playtest and Phase 3: parkour
 
 Feedback: "make the cat more cute; make levels longer with triple the obstacles; they can curve and turn; add the rest of the moves like wall jump."

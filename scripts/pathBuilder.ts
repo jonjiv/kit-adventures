@@ -84,19 +84,27 @@ export class PathBuilder {
     this.segTop = Math.max(this.segTop, y1);
   }
 
-  /** Path floor across the whole width from f0 to f1: dirt with a top layer. */
+  /**
+   * Path floor across the whole width from f0 to f1: dirt with a 0.4 m top
+   * layer stacked on it. The two must only touch, never overlap, or their
+   * sides lie on the same plane and flicker.
+   */
   floor(f0: number, f1: number, top = this.H, mat: MaterialName = 'grass'): void {
     const h = this.half;
-    if (top - 0.4 > this.ground) this.block(-h, f0, h, f1, this.ground, top - 0.4, 'dirt', { round: 0.05 });
-    this.block(-h, f0, h, f1, Math.min(top - 0.4, this.ground), top, mat);
+    const layer = Math.max(top - 0.4, this.ground);
+    if (layer > this.ground) this.block(-h, f0, h, f1, this.ground, layer, 'dirt', { round: 0.05 });
+    this.block(-h, f0, h, f1, layer, top, mat);
   }
 
   /** A hole across the path, with water at the bottom. Falling in means back to the last checkpoint. */
   pit(f0: number, f1: number): void {
-    const h = this.half;
-    const r = this.rect(-h, f0, h, f1);
-    this.pits.push(r);
-    this.L.water(r.x0, this.base, r.z0, r.x1, this.base + 0.8, r.z1);
+    const h = this.half, w = this.hedge;
+    // The hole in the ground reaches under the hedges, so the pit's sides are
+    // only hedge (ground and hedge on the same plane would flicker).
+    this.pits.push(this.rect(-h - w, f0, h + w, f1));
+    // Water sits a little inside the hole for the same reason.
+    const r = this.rect(-h, f0, h, f1), e = 0.03;
+    this.L.water(r.x0 + e, this.base + e, r.z0 + e, r.x1 - e, this.base + 0.8, r.z1 - e);
   }
 
   /** Upright cylinder from the bottom of the pit up to `top`. */
@@ -200,11 +208,15 @@ export class PathBuilder {
     };
     this.L.box(box.x0, this.base - 1, box.z0, box.x1, this.base, box.z1, 'dirt', { round: 0 });
 
-    // Ground = the big box minus the pits, cut into strips along x.
-    const xs = [...new Set([box.x0, box.x1, ...this.pits.flatMap((p) => [p.x0, p.x1])])].sort((a, b) => a - b);
+    // Ground = the big box minus the pits, cut into strips along x. Holes are
+    // 2 cm wider than the pits so the ground's cut edges sit just behind any
+    // hedge or wall at the pit's edge instead of on the same plane (flicker).
+    const e = 0.02;
+    const pits = this.pits.map((p) => ({ x0: p.x0 - e, z0: p.z0 - e, x1: p.x1 + e, z1: p.z1 + e }));
+    const xs = [...new Set([box.x0, box.x1, ...pits.flatMap((p) => [p.x0, p.x1])])].sort((a, b) => a - b);
     for (let i = 0; i < xs.length - 1; i++) {
       const xa = xs[i], xb = xs[i + 1];
-      const holes = this.pits.filter((p) => p.x0 <= xa && p.x1 >= xb).map((p) => [p.z0, p.z1]).sort((a, b) => a[0] - b[0]);
+      const holes = pits.filter((p) => p.x0 <= xa && p.x1 >= xb).map((p) => [p.z0, p.z1]).sort((a, b) => a[0] - b[0]);
       let z = box.z0;
       for (const [h0, h1] of [...holes, [box.z1, box.z1]]) {
         if (h0 > z) {

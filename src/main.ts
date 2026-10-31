@@ -15,7 +15,7 @@ const LEVELS = [
 ];
 
 async function start(app: HTMLElement) {
-  const camera = new THREE.PerspectiveCamera(TUNING.camera.fov, 1, 0.1, 1000);
+  const camera = new THREE.PerspectiveCamera(TUNING.camera.fov, 1, TUNING.camera.near, TUNING.camera.far);
   const renderer = createRenderer(app, camera);
   const input = new Input(renderer.domElement);
 

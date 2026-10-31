@@ -116,6 +116,13 @@ export const TUNING = {
 
   camera: {
     fov: 65,
+    /**
+     * Nearest and farthest distances drawn. A bigger near distance gives the
+     * depth test more precision far away (less flicker); keep it below
+     * wallPadding so walls never get cut open, and keep far beyond the sky (500 m).
+     */
+    near: 0.15,
+    far: 700,
     /** Distance behind the cat (5 back and 2 up, per the plan). */
     distance: 5.4,
     pitch: 22,
