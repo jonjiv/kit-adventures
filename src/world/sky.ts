@@ -81,15 +81,16 @@ export class Sky {
   }
 
   private makeClouds(): void {
-    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x888888 });
-    const box = new THREE.BoxGeometry(1, 1, 1);
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x999999 });
+    const puff = new THREE.IcosahedronGeometry(1, 1);
     for (let i = 0; i < 16; i++) {
       const cloud = new THREE.Group();
-      const parts = 2 + Math.floor(Math.random() * 3);
+      const parts = 3 + Math.floor(Math.random() * 3);
       for (let p = 0; p < parts; p++) {
-        const m = new THREE.Mesh(box, mat);
-        m.scale.set(6 + Math.random() * 8, 1.5 + Math.random(), 4 + Math.random() * 6);
-        m.position.set((Math.random() - 0.5) * 10, p * 0.6, (Math.random() - 0.5) * 6);
+        const m = new THREE.Mesh(puff, mat);
+        const s = 2.5 + Math.random() * 2.5;
+        m.scale.set(s * 1.3, s * 0.75, s);
+        m.position.set((p - parts / 2) * 3 + Math.random(), Math.random() * 1.5, (Math.random() - 0.5) * 3);
         cloud.add(m);
       }
       cloud.position.set(

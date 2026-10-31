@@ -23,7 +23,7 @@ export class FlyCamera {
 
   update(dt: number, input: Input): void {
     const { dx, dy } = input.takeMouse();
-    const maxPitch = THREE.MathUtils.degToRad(TUNING.mouse.maxPitch);
+    const maxPitch = THREE.MathUtils.degToRad(TUNING.fly.maxPitch);
     this.yaw -= dx * TUNING.mouse.sensitivity;
     this.pitch = THREE.MathUtils.clamp(this.pitch - dy * TUNING.mouse.sensitivity, -maxPitch, maxPitch);
     this.applyRotation();

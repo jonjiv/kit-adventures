@@ -84,3 +84,11 @@ canvas {
   font-size: 20px;
   opacity: 0.7;
 }
+
+.controls-hint {
+  transition: opacity 1s;
+}
+
+.controls-hint.faded {
+  opacity: 0;
+}

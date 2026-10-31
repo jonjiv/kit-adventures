@@ -15,6 +15,15 @@ Kit Adventures is a blocky, Minecraft-style 3D platformer that runs in a web bro
 - No internet needed to play, no accounts, no ads, no outside links.
 - Everything Gideon chose here is a requirement. Anything this plan leaves open is Claude Code's call, as long as it keeps the game simple.
 
+## Changes after the Phase 1 playtest (Oct 31, 2026)
+
+These replace anything below that says otherwise:
+
+- **N64 style, not Minecraft style.** The world is built from rounded, smooth-shaded shapes (bevelled boxes, cylinders, low-poly blobs for bushes and trees) with soft, blurry painted textures. There is no 1-meter block grid.
+- **Levels are lists of pieces**: rounded boxes and cylinders in a material (grass, wood, stone, brick, glass, carpet, fabric, roof tile, plaster, metal, leaves, bark, plus paint colors), props (tree, bush, flowers, rock), water and lava pools, and invisible barriers. Collision is AABB boxes made from those pieces.
+- **Every level forces one path.** The sides are walls (hedges, fences, buildings) with invisible barriers above them up to the sky. Obstacles span the whole path and pits have no way around, so no obstacle can be skipped. Tests check that the walls have no gaps.
+- **The level editor (Phase 7)** places these pieces snapped to a grid, with a hotbar of materials and props, instead of placing Minecraft-style blocks.
+
 ## Tech stack and project structure
 
 The game is built with TypeScript, Three.js and Vite. Run it with `npm run dev`, and `npm run build` makes a folder that can be opened or hosted anywhere.

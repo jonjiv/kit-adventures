@@ -13,3 +13,13 @@ npm run levels     # rebuilds public/levels/*.json from scripts/build-levels.ts
 ```
 
 Movement and feel numbers live in `src/player/tuning.ts`.
+
+## Controls (so far)
+
+| Action | Key |
+| --- | --- |
+| Run | W A S D or arrow keys |
+| Look | Mouse (click the game first; Esc frees the mouse) |
+| Jump / double jump | Space (tap for a small hop, hold for a big jump) |
+| Zoom | Mouse wheel |
+| Show/hide fps | F3 |

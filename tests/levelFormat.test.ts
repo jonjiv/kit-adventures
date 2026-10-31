@@ -1,67 +1,53 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { cellIndex, decodeRle, encodeRle, GridBuilder, validateLevel } from '../src/world/levelFormat';
+import { levelColliders, turnBox } from '../src/world/colliders';
 import { levelFromJson } from '../src/world/level';
-import { blockId } from '../src/world/blocks';
+import { LevelBuilder, SKY_BARRIER_HEIGHT, validateLevel } from '../src/world/levelFormat';
 
-describe('run-length encoding', () => {
-  it('round-trips cells', () => {
-    const cells = Uint8Array.from([0, 0, 0, 3, 3, 1, 0, 0, 2]);
-    const rle = encodeRle(cells);
-    expect(rle).toEqual([0, 3, 3, 2, 1, 1, 0, 2, 2, 1]);
-    expect(Array.from(decodeRle(rle, cells.length))).toEqual(Array.from(cells));
+const tiny = () => {
+  const L = new LevelBuilder([10, 10, 10]);
+  L.box(0, 0, 0, 10, 1, 10, 'grass');
+  L.add({ type: 'start', pos: [5, 1, 5] });
+  return L;
+};
+
+describe('LevelBuilder', () => {
+  it('accepts corners in any order', () => {
+    const L = new LevelBuilder([10, 10, 10]);
+    L.box(4, 3, 2, 1, 0, 0, 'stone');
+    expect(L.pieces[0]).toMatchObject({ kind: 'box', pos: [1, 0, 0], size: [3, 3, 2] });
   });
 
-  it('rejects the wrong number of cells', () => {
-    expect(() => decodeRle([1, 5], 4)).toThrow();
-    expect(() => decodeRle([1, 3], 4)).toThrow();
+  it('puts a sky-high barrier on top of walls', () => {
+    const L = new LevelBuilder([10, 10, 10]);
+    L.wall(0, 0, 0, 1, 3, 10, 'brick');
+    expect(L.pieces[1]).toMatchObject({ kind: 'barrier', pos: [0, 3, 0], size: [1, SKY_BARRIER_HEIGHT - 3, 10] });
   });
-});
 
-describe('GridBuilder', () => {
-  it('fills boxes in either corner order and builds a palette', () => {
-    const g = new GridBuilder([4, 3, 4]);
-    g.fill(2, 0, 2, 0, 0, 0, 'stone');
-    g.set(1, 2, 1, 'grass');
-    g.set(9, 9, 9, 'grass'); // out of bounds is ignored
-    expect(g.palette).toEqual(['air', 'stone', 'grass']);
-    expect(g.cells[cellIndex(g.size, 0, 0, 0)]).toBe(1);
-    expect(g.cells[cellIndex(g.size, 2, 0, 2)]).toBe(1);
-    expect(g.cells[cellIndex(g.size, 3, 0, 3)]).toBe(0);
-    expect(g.cells[cellIndex(g.size, 1, 2, 1)]).toBe(2);
-    expect(validateLevel(g.toLevel('Tiny', 'house'))).toEqual([]);
+  it('makes valid levels', () => {
+    expect(validateLevel(tiny().toLevel('Tiny', 'house'))).toEqual([]);
   });
 });
 
 describe('validateLevel', () => {
-  const good = () => new GridBuilder([2, 2, 2]).toLevel('Ok', 'city');
-
-  it('accepts a good level', () => {
-    expect(validateLevel(good())).toEqual([]);
-  });
+  const good = () => tiny().toLevel('Ok', 'city');
 
   it('finds problems', () => {
     expect(validateLevel(null)).not.toEqual([]);
+    expect(validateLevel({ ...good(), version: 1 })).not.toEqual([]);
     expect(validateLevel({ ...good(), theme: 'moon' })).not.toEqual([]);
     expect(validateLevel({ ...good(), size: [0, 2, 2] })).not.toEqual([]);
     expect(validateLevel({ ...good(), size: [999, 2, 2] })).not.toEqual([]);
-    expect(validateLevel({ ...good(), palette: ['stone'] })).not.toEqual([]);
-    expect(validateLevel({ ...good(), blocks: [0, 7] })).not.toEqual([]);
-    expect(validateLevel({ ...good(), blocks: [5, 8] })).not.toEqual([]);
+    expect(validateLevel({ ...good(), pieces: [{ kind: 'box', pos: [0, 0, 0], size: [1, 1, 1], mat: 'cheese' }] })).not.toEqual([]);
+    expect(validateLevel({ ...good(), pieces: [{ kind: 'prop', prop: 'tree', pos: [0, 0, 0], rot: 45 }] })).not.toEqual([]);
+    expect(validateLevel({ ...good(), pieces: [{ kind: 'spaceship', pos: [0, 0, 0] }] })).not.toEqual([]);
     expect(validateLevel({ ...good(), objects: [{ type: 'start' }] })).not.toEqual([]);
   });
 });
 
 describe('levelFromJson', () => {
-  it('maps palette names to block ids', () => {
-    const g = new GridBuilder([2, 1, 1]);
-    g.set(0, 0, 0, 'brick');
-    g.set(1, 0, 0, 'not-a-block');
-    g.add({ type: 'start', pos: [0, 1, 0] });
-    const level = levelFromJson(g.toLevel('Mapped', 'house'));
-    expect(level.world.get(0, 0, 0)).toBe(blockId('brick'));
-    expect(level.world.get(1, 0, 0)).toBe(0);
-    expect(level.start?.pos).toEqual([0, 1, 0]);
+  it('needs a start point', () => {
+    const L = new LevelBuilder([10, 10, 10]);
+    expect(() => levelFromJson(L.toLevel('No start', 'house'))).toThrow(/start/);
   });
 
   it('throws a friendly error for a broken level', () => {
@@ -69,14 +55,27 @@ describe('levelFromJson', () => {
   });
 });
 
-describe('built-in level files', () => {
-  it('test.json loads with one start point standing on solid ground', () => {
-    const data = JSON.parse(readFileSync(new URL('../public/levels/test.json', import.meta.url), 'utf8'));
-    expect(validateLevel(data)).toEqual([]);
-    const level = levelFromJson(data);
-    expect(level.objects.filter((o) => o.type === 'start')).toHaveLength(1);
-    const [x, y, z] = level.start!.pos;
-    expect(level.world.isSolid(x, y - 1, z)).toBe(true);
-    expect(level.world.isSolid(x, y, z)).toBe(false);
+describe('colliders', () => {
+  it('turns prop boxes the same way the model turns', () => {
+    const t = turnBox([0, 0, 0], [2, 1, 1], 90);
+    // A box sticking out toward +X sticks out toward -Z after a quarter turn.
+    expect(t.min).toEqual([0, 0, -2]);
+    expect(t.max).toEqual([1, 1, 0]);
+  });
+
+  it('adds invisible walls around the play area that do not block the camera', () => {
+    const colliders = levelColliders(tiny().toLevel('Tiny', 'house'));
+    const walls = colliders.filter((c) => !c.blocksCamera);
+    expect(walls).toHaveLength(4);
+    expect(colliders.filter((c) => c.blocksCamera)).toHaveLength(1);
+  });
+
+  it('skips non-solid pieces, water and lava', () => {
+    const L = new LevelBuilder([10, 10, 10]);
+    L.box(0, 0, 0, 1, 1, 1, 'glass', { solid: false });
+    L.water(0, 0, 0, 2, 1, 2);
+    L.lava(0, 0, 0, 2, 1, 2);
+    L.prop('flowers', 5, 0, 5);
+    expect(levelColliders(L.toLevel('x', 'house')).filter((c) => c.blocksCamera)).toHaveLength(0);
   });
 });

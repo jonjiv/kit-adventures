@@ -2,17 +2,34 @@
 
 Choices made where PLAN.md left things open. Each one aims for the simplest option that is fun for a 9-year-old.
 
-## Phase 1: Foundation
+## Phase 1 playtest: new look and forced paths
 
-- **Level JSON format.** `size` [x, y, z], a `palette` of block names (`palette[0]` is always `"air"`), `blocks` as run-length pairs `[paletteIndex, count, ...]` over cells in x, then z, then y order, and an `objects` list (`type`, `pos`, optional `to` and `yaw`). Blocks are stored by name, so adding new block types later never breaks old levels. Run-length encoding keeps files small: the test level is 3 KB.
-- **Levels are built in code.** `scripts/build-levels.ts` builds the JSON files with `fill`/`set` helpers (`npm run levels`). That is easier to change than hand-editing JSON. The editor will save the same format.
-- **Biggest loadable level is 128 × 64 × 128.** The editor keeps its own 64 × 32 × 64 limit from the plan. Built-in levels may need a bit more room.
-- **Block textures are drawn in code** as a 16×16-pixel atlas (`src/world/textures.ts`), so there are no image files and no copyright questions. Faces get soft corner shading (ambient occlusion) so edges and steps are easy to read.
-- **Extra block: leaves**, for the Backyard tree. More blocks can be added the same way when the levels need them.
-- **Water and lava** draw a little lower than a full block. Glass is see-through with a frame. Lava glows (unaffected by shadows) so it reads as dangerous.
-- **Themes.** House is warm indoor light with no clouds, Backyard is a sunny blue sky with clouds, and City is a purple-orange sunset with clouds. All three are in `src/world/themes.ts`.
-- **Phase 1 explore mode.** There is no cat yet, so the test level opens with a free-fly camera: click to lock the mouse, WASD to fly, Space up, Shift down. The level editor will reuse this camera.
-- **FPS counter** in the bottom-left corner so we can check the 60 fps goal. F3 hides or shows it.
-- **Physics runs at a fixed 60 steps per second** whatever the screen's refresh rate. Drawing happens every screen frame, so 120 Hz screens look smooth too.
-- **The built game must be served, not double-clicked.** `npm run build` makes a `dist/` folder with relative paths that works on any static host (or with `npm run preview`). Browsers block loading game code straight from a `file://` page.
+Feedback: "too on-the-nose Minecraft; more realistic, less blocky, rounded, N64 style; maps must force one path." PLAN.md now has a section recording this.
+
+- **Pieces instead of a block grid.** Levels are lists of rounded boxes, cylinders, props, pools and barriers (`src/world/levelFormat.ts`, version 2). A grid always looks blocky, while pieces can be any size (couch cushions, fences, stumps).
+- **Collision is still simple boxes.** Each piece makes one axis-aligned box (`src/world/colliders.ts`). The rounding is only visual and small, so it never feels unfair. Cylinders collide as a square a little smaller than the circle. Props only turn in 90° steps so their boxes stay lined up.
+- **N64 look.** The textures are 64×64 pixels, painted in code and blurred by smooth filtering. They're tiled by world position, so every surface has the same texture size. Shading is smooth, bushes and treetops are low-poly blobs, and clouds are puffy blobs. Real sun shadows stay on the scenery because they help judge depth.
+- **Round "blob" shadow under the cat**, straight down, like classic N64 games. It's the easiest way for a kid to see where a jump will land. The cat doesn't cast a sun shadow, so it never has two shadows.
+- **Forcing the path.** `LevelBuilder.wall()` builds a visible wall plus an invisible barrier on top of it up to 60 m. Without that, wall-jumping between two facing walls (Phase 3) could climb out. Invisible barriers don't push the camera, so the view stays steady. The edges of every level also get invisible walls. A test checks the Test Path walls for gaps at every height.
+- **"Can it be finished?" test.** A scripted bot plays the Test Path using only run, jump and double jump. If a level change makes the course impossible, the test fails.
+- **Falling out of the level** (below −10 m) sends the cat back to the start. Phase 4 changes this to the last checkpoint.
+
+## Phase 2: the cat moves
+
+- **Cat model.** Built in code from rounded shapes: rounded-box body, round head, cone ears, big eyes with pupils and a shine, muzzle, nose, whiskers, capsule legs and a 6-piece tail. It supports all the cat-maker options already (fur color, plain/stripes/spots/socks, pattern color, eye color). For now it uses the default look: an orange tabby with green eyes.
+- **Animations** are made in code: breathing, blinking, looking around, a gallop that speeds up with running speed, a tail that sways when idle and streams back when running, and stretched-out and tucked jump poses. The double jump does a **front flip** with a sparkle puff, and landing squashes the cat, with a dust puff after big falls.
+- **Jump feel.** A full jump is 1.7 m and the double jump adds 1.3 m. Letting go of Space early makes a smaller hop. Falling is a bit faster than rising, so jumps feel snappy. All of these numbers are in `src/player/tuning.ts`.
+- **Coyote time and jump buffer (0.12 s) are in already**, though the plan lists them in Phase 3. They're part of a fair jump, and the plan's first rule is "forgiving over hard".
+- **Small steps (up to 0.3 m) are walked up automatically.** Taller ones need a jump. Auto-climbing 1 m walls comes with ledge grabs in Phase 3.
+- **Camera.** 5.4 m away, angled 22° down (about 5 back and 2 up), with tilt limited between −15° and 65°. The wheel zooms from 2.5 to 9 m. It snaps in closer when a wall is in the way and eases back out. It smooths the cat's up-and-down movement so jumps don't shake the view.
+- **Controls reminder** shows at the bottom for the first 30 seconds of play, then fades.
+- **Dev helper.** In `npm run dev` only, `window.kit` gives the browser console the play scene and camera, for testing.
+
+## Phase 1: Foundation (still true)
+
+- **Levels are built in code** by `scripts/build-levels.ts` (`npm run levels`), which writes `public/levels/*.json`. The editor will save the same format.
+- **Themes.** House is warm indoor light with no clouds, Backyard is a sunny blue sky with clouds, and City is a purple-orange sunset with clouds (`src/world/themes.ts`).
+- **FPS counter** in the bottom-left; F3 hides it.
+- **Physics runs at a fixed 60 steps per second**, and drawing smooths between steps, so 120 Hz screens look smooth too.
+- **The built game must be served, not double-clicked.** `npm run build` makes `dist/` with relative paths for any static host (or `npm run preview`).
 - **Node.js 26 LTS** was installed with winget, because the computer didn't have Node.
