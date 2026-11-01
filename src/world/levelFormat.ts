@@ -19,7 +19,7 @@ export const MAX_LEVEL_SIZE: Vec3 = [256, 96, 256];
 export const MATERIALS = [
   'grass', 'dirt', 'wood', 'stone', 'brick', 'glass', 'carpet', 'fabric', 'roof',
   'plaster', 'metal', 'leaves', 'bark', 'white', 'red', 'yellow', 'blue', 'pink',
-  'asphalt', 'building', 'moondust', 'moonrock', 'panel', 'forcefield',
+  'asphalt', 'building', 'moondust', 'moonrock', 'panel', 'forcefield', 'mushroom', 'vent',
 ] as const;
 export type MaterialName = (typeof MATERIALS)[number];
 
@@ -29,7 +29,17 @@ export const SEE_THROUGH: readonly MaterialName[] = ['glass', 'forcefield'];
  * Soft or slippery surfaces: no wall runs, wall jumps or ledge grabs on them.
  * Path walls use these, so you can't wall-run past an obstacle.
  */
-export const NO_GRIP: readonly MaterialName[] = ['leaves', 'glass', 'forcefield'];
+export const NO_GRIP: readonly MaterialName[] = ['leaves', 'glass', 'forcefield', 'mushroom'];
+/** Landing on these bounces the cat high into the air (garden mushrooms). */
+export const BOUNCY: readonly MaterialName[] = ['mushroom'];
+
+/**
+ * Objects that are areas: pos is the low corner and to is the high corner.
+ * In an updraft, wind blows the cat upward (city fans). In low gravity the cat
+ * falls slowly and jumps much higher and farther (moon bubbles).
+ */
+export const ZONES = ['updraft', 'lowGravity'] as const;
+export type ZoneKind = (typeof ZONES)[number];
 
 /** Props are ready-made decorations built in code (see src/world/props.ts). */
 export const PROPS = ['tree', 'bush', 'flowers', 'rock'] as const;
@@ -133,6 +143,8 @@ export function validateLevel(data: unknown): string[] {
         errors.push(`Object ${i + 1} needs a type and a position.`);
       } else if (obj.to !== undefined && !isVec3(obj.to)) {
         errors.push(`Object ${i + 1} has a broken "to" position.`);
+      } else if (ZONES.includes(obj.type as ZoneKind) && obj.to === undefined) {
+        errors.push(`Object ${i + 1} is an area and needs a "to" corner.`);
       } else if (obj.text !== undefined && typeof obj.text !== 'string') {
         errors.push(`Object ${i + 1} has broken sign words.`);
       }

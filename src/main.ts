@@ -1,11 +1,13 @@
 import './style.css';
 import * as THREE from 'three';
+import { Sounds } from './audio/sounds';
 import { Input } from './engine/input';
 import { FixedStepper, runLoop } from './engine/loop';
 import { createRenderer } from './engine/renderer';
 import { PlayScene } from './playScene';
 import { TUNING } from './player/tuning';
 import { FpsMeter } from './ui/fps';
+import { MuteButton } from './ui/muteButton';
 import { PlayHint } from './ui/playHint';
 import { loadLevel } from './world/level';
 
@@ -20,6 +22,7 @@ async function start(app: HTMLElement) {
   const camera = new THREE.PerspectiveCamera(TUNING.camera.fov, 1, TUNING.camera.near, TUNING.camera.far);
   const renderer = createRenderer(app, camera);
   const input = new Input(renderer.domElement, app);
+  const sounds = new Sounds();
 
   let play: PlayScene;
   let loading = false;
@@ -28,14 +31,18 @@ async function start(app: HTMLElement) {
     loading = true;
     const level = await loadLevel(`${import.meta.env.BASE_URL}levels/${choice.file}`);
     play?.dispose();
-    play = new PlayScene(level, camera, input);
+    play = new PlayScene(level, camera, input, sounds);
     hint.setCurrent(choice.id);
     loading = false;
     // Handy for poking at the game from the browser console while developing.
-    if (import.meta.env.DEV) Object.assign(window, { kit: { play, camera, open } });
+    if (import.meta.env.DEV) Object.assign(window, { kit: { play, camera, open, sounds } });
   };
 
-  const hint = new PlayHint(app, input, LEVELS, (id) => void open(id));
+  const hint = new PlayHint(app, input, LEVELS, (id) => {
+    sounds.play('click');
+    void open(id);
+  });
+  new MuteButton(app, sounds);
   const fps = new FpsMeter(app);
   await open(LEVELS[0].id);
 

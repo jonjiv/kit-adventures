@@ -97,6 +97,37 @@ describe('the walls along every path have no grip, so they cannot be wall-run pa
   });
 });
 
+describe('the themed levels are laid out differently, each with its own obstacle', () => {
+  const themed = [
+    ['Garden Path', gardenLevel, ['mushroomCliff', 'mushroomPit', 'mushroomPitCliff']],
+    ['City Rooftops', cityLevel, ['fanLift', 'fanGlide', 'fanGlideLift']],
+    ['Moon Base', moonLevel, ['floatyCliff', 'craterLeap', 'craterCliff']],
+  ] as const;
+  const plans = themed.map(([, make]) => make().builder.plan);
+
+  it.each(themed.map((t, i) => [t[0], t[2], plans[i]] as const))('%s has its own obstacle in every part of the level', (_name, own, plan) => {
+    for (const id of own) expect(plan).toContain(id);
+    const others = themed.flatMap((t) => t[2]).filter((id) => !(own as readonly string[]).includes(id));
+    for (const id of others) expect(plan).not.toContain(id);
+  });
+
+  it('no two levels have the same order of obstacles or turns', () => {
+    const strip = (plan: string[]) => plan.filter((p) => p !== 'hill' && p !== 'down');
+    for (let i = 0; i < plans.length; i++) {
+      for (let j = i + 1; j < plans.length; j++) {
+        const a = strip(plans[i]), b = strip(plans[j]);
+        const same = a.filter((step, k) => step === b[k]).length;
+        expect(same / Math.max(a.length, b.length)).toBeLessThan(0.35);
+      }
+    }
+  });
+
+  it('the Garden and the Moon are hilly', () => {
+    expect(plans[0].filter((p) => p === 'hill').length).toBeGreaterThanOrEqual(4);
+    expect(plans[2].filter((p) => p === 'hill').length).toBeGreaterThanOrEqual(4);
+  });
+});
+
 describe('Garden Path', () => {
   it('turns at least five times and is far longer than the old test level', () => {
     const { file } = gardenLevel();

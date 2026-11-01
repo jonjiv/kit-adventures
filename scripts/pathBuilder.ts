@@ -11,7 +11,7 @@
 // A style gives each level its look: obstacles are written with garden
 // materials (grass, dirt, wood...) and the style swaps them.
 
-import { LevelBuilder, SEE_THROUGH, type LevelFile, type MaterialName, type PropName, type Theme } from '../src/world/levelFormat.ts';
+import { LevelBuilder, SEE_THROUGH, type LevelFile, type MaterialName, type PropName, type Theme, type ZoneKind } from '../src/world/levelFormat.ts';
 
 /** Forward directions (x, z) for headings 0 = north (-z), 1 = east, 2 = south, 3 = west. */
 const DIRS: readonly [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
@@ -34,11 +34,13 @@ export interface PathStyle {
   /** Pits have water at the bottom (otherwise they're just a long drop). */
   pitWater: boolean;
   scenery: 'garden' | 'city' | 'moon';
+  /** Big soft hills of the ground material outside the path. */
+  hills: boolean;
 }
 
 export const GARDEN_STYLE: PathStyle = {
   swap: {}, props: {}, side: 'leaves', sideRound: 0.35,
-  groundTop: 'grass', groundUnder: 'dirt', pitWater: true, scenery: 'garden',
+  groundTop: 'grass', groundUnder: 'dirt', pitWater: true, scenery: 'garden', hills: true,
 };
 
 /** Rooftops: concrete roofs on buildings, glass walls, skyscrapers all around, gaps down to the street. */
@@ -46,7 +48,7 @@ export const CITY_STYLE: PathStyle = {
   swap: { grass: 'stone', dirt: 'building', wood: 'metal', bark: 'metal', leaves: 'glass' },
   props: { flowers: 'bush' },
   side: 'glass', sideRound: 0.04,
-  groundTop: 'asphalt', groundUnder: 'stone', pitWater: false, scenery: 'city',
+  groundTop: 'asphalt', groundUnder: 'stone', pitWater: false, scenery: 'city', hills: false,
 };
 
 /** Moon base: dusty paths between glowing force fields, with space-station panels and metal walls. */
@@ -54,13 +56,14 @@ export const MOON_STYLE: PathStyle = {
   swap: { grass: 'moondust', dirt: 'moonrock', stone: 'moonrock', wood: 'panel', brick: 'metal', bark: 'metal', leaves: 'forcefield' },
   props: { flowers: null, tree: null, bush: 'rock' },
   side: 'forcefield', sideRound: 0.04,
-  groundTop: 'moondust', groundUnder: 'moonrock', pitWater: false, scenery: 'moon',
+  groundTop: 'moondust', groundUnder: 'moonrock', pitWater: false, scenery: 'moon', hills: true,
 };
 
 const overlapArea = (a: Rect, b: Rect) =>
   Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0));
 
-function rng(seed: number) {
+/** Repeatable random numbers from 0 to 1. */
+export function rng(seed: number) {
   return () => {
     seed = (seed * 16807) % 2147483647;
     return (seed - 1) / 2147483646;
@@ -82,11 +85,14 @@ export class PathBuilder {
   readonly footprints: Rect[] = [];
   /** Scenery spots outside the hedges that the cat must never be able to reach. */
   readonly outside: [number, number][] = [];
+  /** What the path is made of, in order (obstacle names, "hill", "left", "right"), for tests. */
+  readonly plan: string[] = [];
   /** Where the path ends (for tests). */
   goal: [number, number, number] = [0, 0, 0];
 
   readonly style: PathStyle;
   private pits: Rect[] = [];
+  private hillRects: Rect[] = [];
   private ox = 0;
   private oz = 0;
   private k = 0;
@@ -160,6 +166,19 @@ export class PathBuilder {
     const [x, z] = this.world(s, f);
     this.L.cylinder(x, this.base, z, radius, top - this.base, this.mat(mat));
     this.segTop = Math.max(this.segTop, top);
+  }
+
+  /** Upright cylinder from y0, `height` tall. */
+  disc(s: number, f: number, radius: number, y0: number, height: number, mat: MaterialName): void {
+    const [x, z] = this.world(s, f);
+    this.L.cylinder(x, y0, z, radius, height, this.mat(mat));
+    this.segTop = Math.max(this.segTop, y0 + height);
+  }
+
+  /** An updraft or low-gravity area (path-local corners, absolute heights). */
+  zone(kind: ZoneKind, s0: number, f0: number, s1: number, f1: number, y0: number, y1: number): void {
+    const r = this.rect(s0, f0, s1, f1);
+    this.L.add({ type: kind, pos: [r.x0, y0, r.z0], to: [r.x1, y1, r.z1] });
   }
 
   prop(prop: PropName, s: number, f: number, y = this.H, rot = 0, scale?: number): void {
@@ -284,6 +303,7 @@ export class PathBuilder {
     }
 
     const r = rng(seed);
+    if (st.hills) this.rollingHills(box, r);
     if (st.scenery === 'city') this.cityScenery(box, r);
     else if (st.scenery === 'moon') this.moonScenery(box, r);
     else this.gardenScenery(box, r);
@@ -299,12 +319,36 @@ export class PathBuilder {
     return this.footprints.some((f) => a.x1 > f.x0 - pad && a.x0 < f.x1 + pad && a.z1 > f.z0 - pad && a.z0 < f.z1 + pad);
   }
 
+  /** True if a spot is on one of the rolling hills. */
+  private onHill(x: number, z: number, pad = 1): boolean {
+    return this.hillRects.some((h) => x > h.x0 - pad && x < h.x1 + pad && z > h.z0 - pad && z < h.z1 + pad);
+  }
+
+  /** Soft, rounded hills (one or two humps) away from the path. */
+  private rollingHills(box: Rect, r: () => number): void {
+    const g = this.ground, mat = this.style.groundTop;
+    const area = (box.x1 - box.x0) * (box.z1 - box.z0);
+    for (let i = 0; i < area / 900; i++) {
+      const w = 10 + r() * 18, d = 8 + r() * 16, h = 2 + r() * 4;
+      const x = box.x0 + r() * (box.x1 - box.x0 - w), z = box.z0 + r() * (box.z1 - box.z0 - d);
+      const a: Rect = { x0: x, z0: z, x1: x + w, z1: z + d };
+      if (this.rectNearPath(a, 6)) continue;
+      this.L.box(a.x0, g, a.z0, a.x1, g + h, a.z1, mat, { round: h / 2 });
+      if (r() < 0.6) {
+        // A second, smaller hump on top, starting inside the first so no faces line up.
+        const cx = x + w * (0.3 + r() * 0.4), cz = z + d * (0.3 + r() * 0.4), hw = w * 0.28, hd = d * 0.28, y0 = g + h * 0.45;
+        this.L.box(cx - hw, y0, cz - hd, cx + hw, y0 + h * 0.95, cz + hd, mat, { round: h * 0.45 });
+      }
+      this.hillRects.push(a);
+    }
+  }
+
   /** Trees, bushes, rocks and flowers. */
   private gardenScenery(box: Rect, r: () => number): void {
     const area = (box.x1 - box.x0) * (box.z1 - box.z0);
     for (let i = 0; i < area / 90; i++) {
       const x = box.x0 + r() * (box.x1 - box.x0), z = box.z0 + r() * (box.z1 - box.z0);
-      if (this.nearPath(x, z, 3)) continue;
+      if (this.nearPath(x, z, 3) || this.onHill(x, z)) continue;
       const roll = r();
       const prop: PropName = roll < 0.45 ? 'tree' : roll < 0.7 ? 'bush' : roll < 0.85 ? 'flowers' : 'rock';
       this.L.prop(prop, x, this.ground, z, Math.floor(r() * 4) * 90, prop === 'tree' ? 1.3 + r() * 0.8 : undefined);
@@ -347,13 +391,15 @@ export class PathBuilder {
     for (let i = 0; i < area / 110; i++) {
       const x = box.x0 + r() * (box.x1 - box.x0), z = box.z0 + r() * (box.z1 - box.z0);
       const roll = r();
+      if (this.onHill(x, z, 6)) continue;
       if (roll < 0.4) {
         if (this.nearPath(x, z, 3)) continue;
         this.L.prop('rock', x, g, z, Math.floor(r() * 4) * 90, 1 + r() * 1.8);
       } else if (roll < 0.65) {
         const s = 1.5 + r() * 2.5;
         if (this.nearPath(x, z, 3 + s)) continue;
-        this.L.box(x - s, g, z - s * 0.8, x + s, g + s * (0.6 + r() * 0.6), z + s * 0.8, 'moonrock', { round: 0.6 });
+        // Sunk a little into the ground, so its bottom never lines up with a dome's.
+        this.L.box(x - s, g - 0.15, z - s * 0.8, x + s, g + s * (0.6 + r() * 0.6), z + s * 0.8, 'moonrock', { round: 0.6 });
       } else if (roll < 0.85) {
         const rad = 2.5 + r() * 2;
         if (this.nearPath(x, z, 4 + rad)) continue;

@@ -26,6 +26,7 @@ Movement and feel numbers live in `src/player/tuning.ts`.
 | Ledge grab | Automatic when falling near a ledge; Space or forward climbs, back drops |
 | Dash / pounce | Shift (once per jump in the air) |
 | Zoom | Mouse wheel |
+| Sound on/off | M, or the speaker button in the top corner |
 | Show/hide fps | F3 |
 
 On an iPad or phone, touch controls appear after the first touch (hold it sideways):
@@ -37,6 +38,7 @@ On an iPad or phone, touch controls appear after the first touch (hold it sidewa
 | Jump / double jump | JUMP button, bottom right |
 | Dash / pounce | DASH button, above JUMP |
 | Wall run, wall jump, ledges | Same as the keyboard: hold the joystick toward the wall, tap JUMP |
+| Sound on/off | Speaker button, left of Pause |
 | Pause | Pause button, top right. The pause panel has Settings: button size, camera speed and left-handed mode |
 
 To try it on a real iPad or phone on the same Wi-Fi: `npm run dev -- --host`, then open the "Network" address it prints. You can also add the game to the home screen (Share > Add to Home Screen) to open it full screen like an app.

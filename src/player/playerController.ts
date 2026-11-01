@@ -5,7 +5,8 @@
 // States: ground, air, wallRun, ledge (hanging), climb (pulling up), dash.
 
 import type { CollisionWorld } from '../world/collision';
-import type { Vec3 } from '../world/levelFormat';
+import type { Vec3, ZoneKind } from '../world/levelFormat';
+import { zoneAt, type Zone } from '../world/zones';
 import { jumpPhysics, TUNING, type PlayerTuning } from './tuning';
 
 export interface MoveIntent {
@@ -22,7 +23,8 @@ export const NO_INPUT: MoveIntent = { x: 0, z: 0, jumpPressed: false, jumpHeld: 
 export type PlayerState = 'ground' | 'air' | 'wallRun' | 'ledge' | 'climb' | 'dash';
 export type PlayerEvent =
   | 'jump' | 'doubleJump' | 'wallJump' | 'wallRun' | 'wallStep'
-  | 'ledgeGrab' | 'climb' | 'dash' | 'land' | 'respawn';
+  | 'ledgeGrab' | 'climb' | 'dash' | 'land' | 'respawn'
+  | 'bounce' | 'updraft' | 'lowGravity';
 
 /** Longest distance moved in one collision check, so fast falls can't pass through thin floors. */
 const MAX_MOVE = 0.1;
@@ -51,6 +53,10 @@ export class PlayerController {
   wallNormal: Vec3 | null = null;
   /** Things that happened this step, for animation and sound. Cleared at the start of each step. */
   readonly events: PlayerEvent[] = [];
+  /** Updraft and low-gravity areas in the level. */
+  zones: readonly Zone[] = [];
+  /** The kind of area the cat is in now. */
+  zone: ZoneKind | null = null;
 
   private world: CollisionWorld;
   private t: PlayerTuning;
@@ -132,6 +138,10 @@ export class PlayerController {
     for (const k of ['wallCoyote', 'wallRunCooldown', 'controlLock', 'ledgeCooldown', 'dashCooldown'] as const) {
       this[k] = Math.max(0, this[k] - dt);
     }
+
+    const kind = zoneAt(this.zones, this.pos, this.t.height)?.kind ?? null;
+    if (kind && kind !== this.zone) this.events.push(kind);
+    this.zone = kind;
 
     if (this.state === 'ledge') this.stepLedge(intent, dt);
     else if (this.state === 'climb') this.stepClimb(dt);
@@ -216,13 +226,23 @@ export class PlayerController {
     }
     if (this.state === 'wallRun') this.continueWallRun(wall, into, dt);
 
+    const low = this.zone === 'lowGravity';
     let g = gravity * (this.vel[1] < 0 ? t.fallGravityMultiplier : 1);
     if (this.state === 'wallRun') g = gravity * t.wallRunGravity;
-    this.vel[1] = Math.max(this.vel[1] - g * dt, -t.maxFallSpeed);
+    if (low) g *= t.lowGravity;
+    this.vel[1] = Math.max(this.vel[1] - g * dt, low ? -t.lowGravityMaxFall : -t.maxFallSpeed);
+    if (this.zone === 'updraft' && this.state !== 'wallRun') {
+      // Wind lifts the cat and gives back its double jump and dash, to steer onto a ledge.
+      this.vel[1] = Math.min(this.vel[1] + t.updraftAccel * dt, Math.max(this.vel[1], t.updraftMaxRise));
+      this.airJumpsLeft = t.airJumps;
+      this.canAirDash = true;
+    }
     if (this.state === 'air' && wall && into > 0.3 && this.vel[1] < -t.wallSlideSpeed) this.vel[1] = -t.wallSlideSpeed;
 
     if (this.state === 'ground') this.state = 'air';
     this.move(dt, wasGround);
+    // Walking down small steps (hills) keeps the cat on the ground instead of hopping.
+    if (wasGround && this.state === 'air' && this.vel[1] <= 0) this.snapDown();
 
     if (this.onGround) {
       this.airJumpsLeft = t.airJumps;
@@ -272,6 +292,29 @@ export class PlayerController {
     this.airJumpsLeft = t.airJumps;
     this.canAirDash = true;
     this.events.push('wallJump');
+  }
+
+  /** Puts the cat on the ground if it is only a small step below the feet. */
+  private snapDown(): void {
+    const h = this.t.width / 2;
+    const [x, y, z] = this.pos;
+    const hits = this.world.overlapping([x - h, y - this.t.stepHeight, z - h], [x + h, y, z + h]);
+    if (hits.length === 0 || hits.some((c) => c.bounce)) return;
+    this.pos[1] = Math.max(...hits.map((c) => c.max[1]));
+    this.vel[1] = 0;
+    this.state = 'ground';
+  }
+
+  /** Launched up by a mushroom. */
+  private bounce(): void {
+    const t = this.t;
+    this.vel[1] = Math.sqrt(2 * jumpPhysics(t).gravity * t.bounceHeight);
+    this.state = 'air';
+    this.airJumpsLeft = t.airJumps;
+    this.canAirDash = true;
+    this.canCut = false;
+    this.coyote = 0;
+    this.events.push('bounce');
   }
 
   // ---------------------------------------------------------------- ledges and climbing
@@ -488,7 +531,12 @@ export class PlayerController {
 
     if (axis === 1) {
       if (d < 0) {
-        this.pos[1] = Math.max(...hits.map((c) => c.max[1]));
+        const top = Math.max(...hits.map((c) => c.max[1]));
+        this.pos[1] = top;
+        if (this.state !== 'dash' && hits.some((c) => c.bounce && c.max[1] === top)) {
+          this.bounce();
+          return;
+        }
         this.landSpeed = -this.vel[1];
         if (this.state !== 'dash') this.state = 'ground';
       } else {

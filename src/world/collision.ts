@@ -10,6 +10,8 @@ export interface Collider {
   blocksCamera: boolean;
   /** The cat can wall-run, wall-jump and ledge-grab on it (not on bushy hedges or barriers). */
   grip: boolean;
+  /** Landing on it bounces the cat up (mushrooms). */
+  bounce?: boolean;
 }
 
 const CELL = 4;

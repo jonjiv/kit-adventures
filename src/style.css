@@ -382,3 +382,35 @@ body.touch-mode .fps {
   50%, 80% { transform: rotate(-90deg); }
   100% { transform: rotate(0deg); }
 }
+
+/* Sound on/off, top right (left of the pause button in touch mode). */
+.mute-button {
+  position: absolute;
+  z-index: 5;
+  top: 14px;
+  right: 14px;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 3px solid rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  background: rgba(40, 40, 80, 0.35);
+  color: #fff;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mute-button.muted {
+  background: rgba(120, 40, 60, 0.45);
+}
+
+body.touch-mode .mute-button {
+  width: 64px;
+  height: 64px;
+  top: calc(18px + env(safe-area-inset-top));
+  right: calc(14px + 72px + 14px + env(safe-area-inset-right));
+}

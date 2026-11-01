@@ -1,10 +1,12 @@
 // One level being played: the world, the cat, the camera, checkpoints and effects.
 
 import * as THREE from 'three';
+import type { Sounds } from './audio/sounds';
 import { FollowCamera } from './engine/followCamera';
 import type { Input } from './engine/input';
 import { Particles } from './engine/particles';
 import { Checkpoint } from './entities/checkpoint';
+import { ZoneEffects } from './entities/zoneEffects';
 import { buildSign } from './entities/sign';
 import { DEFAULT_LOOK } from './player/catLook';
 import { CatModel } from './player/catModel';
@@ -26,6 +28,8 @@ export class PlayScene {
   readonly camera: FollowCamera;
   private level: Level;
   private input: Input;
+  private sounds: Sounds;
+  private zoneEffects: ZoneEffects;
   private materials = new MaterialLibrary();
   private sky: Sky;
   private cat: CatModel;
@@ -35,9 +39,10 @@ export class PlayScene {
   private time = 0;
   private catPos = new THREE.Vector3();
 
-  constructor(level: Level, camera: THREE.PerspectiveCamera, input: Input) {
+  constructor(level: Level, camera: THREE.PerspectiveCamera, input: Input, sounds: Sounds) {
     this.level = level;
     this.input = input;
+    this.sounds = sounds;
     const { file } = level;
 
     this.scene.add(buildLevelMesh(file, this.materials));
@@ -50,11 +55,14 @@ export class PlayScene {
     this.checkpoints = file.objects.filter((o) => o.type === 'checkpoint').map((o) => new Checkpoint(o));
     for (const c of this.checkpoints) this.scene.add(c.group);
     for (const o of file.objects) if (o.type === 'sign') this.scene.add(buildSign(o));
+    this.zoneEffects = new ZoneEffects(level.zones);
+    this.scene.add(this.zoneEffects.group);
 
     const yaw = level.start.yaw ?? 0;
     this.player = new PlayerController(
       level.collision, level.start.pos, facingFromYaw(yaw), TUNING.player, file.killY ?? TUNING.player.killHeight,
     );
+    this.player.zones = level.zones;
     this.cat = new CatModel(DEFAULT_LOOK);
     this.scene.add(this.cat.root);
 
@@ -85,11 +93,17 @@ export class PlayScene {
     const feet = new THREE.Vector3().fromArray(p.pos);
     const burst = (dy: number, colors: number[], count: number, speed: number, size: number) =>
       this.particles.burst(feet.clone().setY(feet.y + dy), { count, colors, speed, life: 0.45, size, gravity: 2 });
+    const t = TUNING.sound;
     for (const e of p.events) {
+      if (e !== 'land') this.sounds.play(e);
       switch (e) {
         case 'jump':
         case 'climb':
           this.cat.trigger(e);
+          break;
+        case 'bounce':
+          this.cat.trigger('jump');
+          burst(0.1, [0xff5a50, 0xffffff], 12, 3, 0.07);
           break;
         case 'doubleJump':
           this.cat.trigger('doubleJump');
@@ -113,6 +127,7 @@ export class PlayScene {
           break;
         case 'land':
           this.cat.trigger('land', p.landSpeed);
+          if (p.landSpeed > t.landQuietSpeed) this.sounds.play('land', Math.min(1, p.landSpeed / t.landLoudSpeed));
           if (p.landSpeed > 6) {
             this.particles.burst(feet.clone().setY(feet.y + 0.05), {
               count: 10, colors: DUST_COLORS, speed: 2.2, life: 0.35, size: 0.06, flat: true,
@@ -134,6 +149,7 @@ export class PlayScene {
       if (!c.active && c.touches(p.pos)) {
         for (const other of this.checkpoints) other.deactivate();
         c.activate();
+        this.sounds.play('checkpoint');
         p.setSpawn(c.pos, facingFromYaw(c.yaw));
         this.particles.burst(new THREE.Vector3(c.pos[0], c.pos[1] + 1.6, c.pos[2]), {
           count: 18, colors: RAINBOW, speed: 3.5, life: 0.7, size: 0.08, gravity: 3,
@@ -182,6 +198,7 @@ export class PlayScene {
     this.sky.update(dt, this.camera.position);
     this.sky.followShadow(this.catPos);
     this.materials.update(this.time);
+    this.zoneEffects.update(dt, this.time, this.catPos, this.particles);
     this.particles.update(dt);
   }
 

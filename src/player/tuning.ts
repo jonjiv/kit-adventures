@@ -112,6 +112,18 @@ export const TUNING = {
     dashExitSpeed: 7.5,
     /** Wait between dashes on the ground (in the air it's once per jump). */
     dashCooldown: 0.5,
+
+    // Special obstacles: garden mushrooms, city fans and moon low-gravity bubbles.
+    /** How high a mushroom bounces the cat. */
+    bounceHeight: 5.5,
+    /** Upward push from a fan's wind (normal gravity is about 26). */
+    updraftAccel: 75,
+    /** Fastest the wind lifts the cat. */
+    updraftMaxRise: 7,
+    /** Gravity inside a low-gravity bubble, as a share of normal gravity. */
+    lowGravity: 0.3,
+    /** Fastest fall inside a low-gravity bubble. */
+    lowGravityMaxFall: 8,
   },
 
   camera: {
@@ -178,6 +190,15 @@ export const TUNING = {
       wallRunMinInto: 0.08,
       wallRunMinAlong: 0.28,
     },
+  },
+
+  sound: {
+    /** Loudness of all sound effects (0 to 1). */
+    volume: 0.6,
+    /** Landings slower than this (meters per second) make no sound, so small hops are quiet. */
+    landQuietSpeed: 5,
+    /** Landings this fast or faster make the loudest thump. */
+    landLoudSpeed: 16,
   },
 
   /** Lighter graphics on phones and tablets, to keep 60 fps. */

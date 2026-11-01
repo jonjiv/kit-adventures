@@ -2,14 +2,28 @@
 
 Choices made where PLAN.md left things open. Each one aims for the simplest option that is fun for a 9-year-old.
 
+## Different layouts, each level's own obstacle, hills and sound
+
+Feedback: "the levels all have a very similar layout. Randomize the layout, add a new, unique obstacle type to each level, make the Garden and Moon hilly, and add sound effects with a way to mute them."
+
+- **Layouts come from a seed.** Garden Path, City Rooftops and Moon Base are laid out by a generator: it picks obstacles from an easy, a medium and a hard group (so each level still gets harder), and puts the turns, hills and drops in random places. The same seed always gives the same level, so the saved files and tests stay in step, and a new seed in `scripts/build-levels.ts` gives a new layout. Each level has 17 obstacles plus the finale, 5 corners with checkpoints and 2 without. A test checks no two levels share more than about a third of their order. The Parkour Gym stays hand-made, since it teaches the moves one by one.
+- **Each level's own obstacle,** in an easy, a medium and a hard version (the hard one is two in a row):
+  - **Garden: bouncy mushrooms.** Landing on a red mushroom bounces you 5.5 m up. One bounces you up a cliff too tall to climb, and others are stepping stones across a long pit. Just walking onto one bounces you.
+  - **City: fans.** A grate with a fan under it blows wind straight up. One lifts you out of a hole onto a tall rooftop. Another lines a long drop, so you float across it on the wind. Wind gives back your double jump and dash, to help steer onto the ledge. White streaks show where the wind is.
+  - **Moon: low-gravity bubbles.** Inside a pink glowing bubble gravity is 30%, so you jump about three times as high and float down slowly. One bubble holds a 12 m crater, far too wide for a normal jump. Another holds a 7 m cliff.
+  - This is where the Moon's low gravity went: only inside the bubbles, so normal obstacles still need their moves. Tests check each new obstacle can't be done without its trick, and can be done with it.
+- **Hills.** The Garden and Moon paths go over hills made of small steps (15 cm high, 50 cm deep), low enough to walk up. Walking down them, the cat now stays stuck to the ground instead of hopping off each step. Some hills end higher or lower than they start, and when the path climbs too high, a long downhill brings it back. Big soft hills also roll across the scenery outside the path.
+- **Sound effects,** all made in code with the Web Audio API (no sound files): jump, double jump, wall run (plus soft paw taps), wall jump, ledge grab, climb, dash, landing thumps (only for big falls, so steps stay quiet), falling back to a checkpoint, the checkpoint chime, the mushroom boing, the wind whoosh, the space wobble when you float into a bubble, and a click for buttons. Volume and the landing thresholds are in `tuning.ts`.
+- **Mute** with M or the speaker button in the top-right corner (in touch mode it sits left of Pause). It's remembered on the device. Browsers only allow sound after a click or tap, so sound starts with the first one.
+
 ## City Rooftops and Moon Base levels
 
 Feedback: "generate two more levels: a city level and a moon base level."
 
 - **City Rooftops.** You run across concrete rooftops at sunset. The floors are the tops of buildings with lit-up windows down their sides, and gaps drop all the way to the street. Glass walls keep you on the path, with apartment blocks and skyscrapers all around (some have water towers). Air vents are the hurdles, steel poles the stepping stones, a steel beam the plank, and a fire-escape zig-zag climbs up.
 - **Moon Base.** You run on grey, cratered moon dust between glowing blue force fields. There are white space-station panels, metal walls to wall-run on, and moon-rock cliffs. The sky is black with stars, and the Earth hangs in it. Outside are boulders, round habitat domes with glass tops, and antennas with red lights. Pits are deep holes with no water at the bottom.
-- **Same gravity on the Moon.** Low gravity sounds fun, but every obstacle is sized and tested for normal jumps. Moon jumps would let you skip them. A floaty "moon jump" could be a special power later.
-- **18 obstacles and 5 corners each,** like the Garden Path, with a checkpoint at every corner. They use the same obstacles in a new order, plus a new **gap run**: three gaps in a row, jump, jump, then double jump.
+- **Same gravity on the Moon** (except inside low-gravity bubbles, added later). Every normal obstacle is sized and tested for normal jumps, and moon jumps everywhere would let you skip them.
+- **18 obstacles and 5 corners each,** like the Garden Path, with a checkpoint at every corner, plus a new **gap run**: three gaps in a row, jump, jump, then double jump. (Layouts are now generated; see above.)
 - **One builder, many looks.** Obstacles are written with garden materials, and each level's style swaps them (for example, wood becomes metal in the City and white panels on the Moon). So any new obstacle works in every level, and the Garden Path files came out exactly the same.
 - **Glass and force fields have no grip,** like hedges, so you can't wall-run past an obstacle on them. A test checks that every level's side walls have no grip.
 - **See-through walls showed a hidden flicker.** Where an obstacle wall stands at the edge of the path, its side and the floor's side lay on the same plane, and the hedges used to hide it. Behind glass or force fields, floors now stop 2 cm short of the walls (too thin to notice or fall into). The flicker test caught this.

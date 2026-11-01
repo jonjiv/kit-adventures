@@ -287,6 +287,40 @@ const SURFACES: Record<SurfaceName, SurfaceDef> = {
       }
     },
   },
+  // Bouncy red mushroom caps with white spots.
+  mushroom: {
+    repeat: 1.6, round: 0.2,
+    paint: (ctx, r) => {
+      flat(0xe8403a)(ctx, r);
+      ctx.fillStyle = '#fff6ea';
+      for (const [x, y, s] of [[12, 14, 7], [44, 10, 5], [30, 38, 8], [56, 44, 6], [8, 52, 5]]) {
+        for (const dx of [-SIZE, 0, SIZE]) for (const dy of [-SIZE, 0, SIZE]) {
+          ctx.beginPath();
+          ctx.ellipse(x + dx, y + dy, s, s * 0.85, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    },
+  },
+  // A dark metal grate over a fan, with yellow and black warning stripes at the edge.
+  vent: {
+    repeat: 2, round: 0.04,
+    paint: (ctx) => {
+      ctx.fillStyle = '#2a2e36';
+      ctx.fillRect(0, 0, SIZE, SIZE);
+      ctx.fillStyle = '#5a606c';
+      for (let y = 2; y < SIZE; y += 8) ctx.fillRect(2, y, SIZE - 4, 3);
+      ctx.fillStyle = '#ffc830';
+      for (let x = -8; x < SIZE; x += 16) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + 8, 0);
+        ctx.lineTo(x + 4, 4);
+        ctx.lineTo(x - 4, 4);
+        ctx.fill();
+      }
+    },
+  },
   water: {
     repeat: 4, round: 0, kind: 'water',
     paint: (ctx, r) => {

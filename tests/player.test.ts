@@ -4,6 +4,7 @@ import { NO_INPUT, PlayerController, type MoveIntent } from '../src/player/playe
 import { TOUCH_PLAYER, TUNING, type PlayerTuning } from '../src/player/tuning';
 import { CollisionWorld, type Collider } from '../src/world/collision';
 import type { Vec3 } from '../src/world/levelFormat';
+import type { Zone } from '../src/world/zones';
 
 const DT = 1 / 60;
 const HALF = TUNING.player.width / 2;
@@ -19,8 +20,12 @@ const pit = (gap: number) => [box([-50, -1, -5], [0, 0, 5]), box([gap, -1, -5], 
 interface Run { p: PlayerController; fell: boolean; maxY: number; events: Set<string> }
 
 /** Plays the cat for some frames. `ctl` says what is pressed each frame. Falling below y = -5 counts as a fall. */
-function play(colliders: Collider[], spawn: Vec3, frames: number, ctl: (p: PlayerController, f: number) => Partial<MoveIntent> = () => ({})): Run {
+function play(
+  colliders: Collider[], spawn: Vec3, frames: number,
+  ctl: (p: PlayerController, f: number) => Partial<MoveIntent> = () => ({}), zones: Zone[] = [],
+): Run {
   const p = new PlayerController(new CollisionWorld(colliders), spawn, 0, tuning, -5);
+  p.zones = zones;
   const run: Run = { p, fell: false, maxY: -Infinity, events: new Set() };
   for (let f = 0; f < frames && !run.fell; f++) {
     p.step({ ...NO_INPUT, ...ctl(p, f) }, DT);
@@ -32,7 +37,7 @@ function play(colliders: Collider[], spawn: Vec3, frames: number, ctl: (p: Playe
 }
 
 /** Runs toward +x from x = -6 and jumps at `jumpAt`. Optionally double jumps at the top and dashes at the top of that. */
-function longJump(colliders: Collider[], jumpAt: number, opts: { double?: boolean; dash?: boolean } = {}): Run {
+function longJump(colliders: Collider[], jumpAt: number, opts: { double?: boolean; dash?: boolean; zones?: Zone[] } = {}): Run {
   let jumped = -1, doubled = -1, dashed = false;
   return play(colliders, [-6, 0, 0], 300, (p, f) => {
     const i: Partial<MoveIntent> = { x: 1, jumpHeld: true };
@@ -40,7 +45,7 @@ function longJump(colliders: Collider[], jumpAt: number, opts: { double?: boolea
     else if (opts.double && jumped >= 0 && doubled < 0 && f > jumped + 2 && p.vel[1] <= 0) { doubled = f; i.jumpPressed = true; }
     else if (opts.dash && doubled >= 0 && !dashed && f > doubled + 2 && p.vel[1] <= 0) { dashed = true; i.dashPressed = true; }
     return i;
-  });
+  }, opts.zones);
 }
 
 const landedPast = (r: Run, x: number, y = 0) => !r.fell && r.p.onGround && r.p.pos[0] > x && Math.abs(r.p.pos[1] - y) < 0.01;
@@ -105,6 +110,19 @@ describe('basic movement', () => {
     expect(low.p.pos[1]).toBeCloseTo(0.25, 5);
     const high = play([FLOOR, box([1, 0, -5], [10, 1.3, 5])], [0, 0, 0], 120, () => ({ x: 1 }));
     expect(high.p.pos[0]).toBeCloseTo(1 - HALF, 5);
+  });
+
+  it('walks up and down hill steps without leaving the ground', () => {
+    const steps: Collider[] = [FLOOR];
+    for (let i = 1; i <= 8; i++) steps.push(box([i * O.hillStepDepth, 0, -5], [20 - i * O.hillStepDepth, i * O.hillStep, 5]));
+    let airborne = 0;
+    const r = play(steps, [0, 0, 0], 240, (p, f) => {
+      if (f > 2 && !p.onGround) airborne++;
+      return { x: 1 };
+    });
+    expect(r.p.pos[0]).toBeGreaterThan(20);
+    expect(r.maxY).toBeCloseTo(8 * O.hillStep, 5);
+    expect(airborne).toBe(0);
   });
 
   it("doesn't fall through a thin floor at top speed", () => {
@@ -279,6 +297,42 @@ describe.each([['keyboard', TUNING.player], ['touch', TOUCH_PLAYER]] as const)('
     expect(r.events.has('wallJump')).toBe(true);
     expect(r.p.onGround).toBe(true);
     expect(r.p.pos[1]).toBeCloseTo(top, 5);
+  });
+
+  it(`a mushroom bounces the cat up a ${O.mushroomCliff} m cliff it could never climb`, () => {
+    const cap = (bounce: boolean): Collider => ({ ...box([1.5, 0, -1.2], [3.9, 0.5, 1.2], false), bounce });
+    const cliff = box([6, 0, -5], [40, O.mushroomCliff, 5]);
+    const r = longJump([FLOOR, cap(true), cliff], 0.2);
+    expect(r.events.has('bounce')).toBe(true);
+    expect(landedPast(r, 6, O.mushroomCliff)).toBe(true);
+    const plain = longJump([FLOOR, cap(false), cliff], 0.2, { double: true });
+    expect(plain.p.pos[1]).toBeLessThan(1);
+  });
+
+  it(`a fan's wind lifts the cat onto a ${O.fanLift} m rooftop`, () => {
+    const walls = [
+      box([-50, -1, -5], [0, 0, 5]), box([0, -O.fanDepth - 1, -5], [6, -O.fanDepth, 5]), box([6, -1, -5], [40, O.fanLift, 5]),
+    ];
+    const wind: Zone = { kind: 'updraft', min: [0, -O.fanDepth, -5], max: [6, O.fanLift + 1.5, 5] };
+    const r = play(walls, [-3, 0, 0], 400, (p) => (p.onGround && p.pos[0] > 6 ? {} : { x: 1 }), [wind]);
+    expect(r.events.has('updraft')).toBe(true);
+    expect(landedPast(r, 6, O.fanLift)).toBe(true);
+    // Without the wind the rooftop is out of reach, even jumping again and again.
+    const stuck = play(walls, [-3, 0, 0], 400, (_, f) => ({ x: 1, jumpPressed: f % 20 === 0, jumpHeld: true }));
+    expect(stuck.maxY).toBeLessThan(O.fanLift - 1);
+  });
+
+  it(`low gravity: a ${O.craterGap} m crater is far too wide normally, easy inside the bubble`, () => {
+    const bubble: Zone = { kind: 'lowGravity', min: [-10, -3, -5], max: [O.craterGap + 10, 12, 5] };
+    expect(landedPast(longJump(pit(O.craterGap), -0.4, { double: true, dash: true }), O.craterGap)).toBe(false);
+    expect(landedPast(longJump(pit(O.craterGap), -0.4, { double: true, zones: [bubble] }), O.craterGap)).toBe(true);
+  });
+
+  it(`low gravity: a double jump reaches a ${O.floatyCliff} m cliff`, () => {
+    const bubble: Zone = { kind: 'lowGravity', min: [-10, -1, -5], max: [20, 14, 5] };
+    const cliff = box([3.5, 0, -5], [40, O.floatyCliff, 5]);
+    expect(longJump([FLOOR, cliff], 1.2, { double: true }).p.pos[1]).toBe(0);
+    expect(landedPast(longJump([FLOOR, cliff], 0.5, { double: true, zones: [bubble] }), 3.5, O.floatyCliff)).toBe(true);
   });
 
   it('the double wall run: run one wall, wall-jump across, run the other', () => {

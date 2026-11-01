@@ -2,7 +2,7 @@
 // collides as a plain box. No Three.js here so it runs in unit tests.
 
 import type { Collider } from './collision';
-import { NO_GRIP, SKY_BARRIER_HEIGHT, type LevelFile, type MaterialName, type Piece, type PropName, type Vec3 } from './levelFormat';
+import { BOUNCY, NO_GRIP, SKY_BARRIER_HEIGHT, type LevelFile, type MaterialName, type Piece, type PropName, type Vec3 } from './levelFormat';
 
 /** Prop collision boxes around the base center, before turning and scaling. null = walk through. */
 const PROP_BOXES: Record<PropName, { min: Vec3; max: Vec3; grip: boolean } | null> = {
@@ -15,11 +15,12 @@ const PROP_BOXES: Record<PropName, { min: Vec3; max: Vec3; grip: boolean } | nul
 /** Bushy surfaces are too soft to wall-run, wall-jump or hang from. */
 const hasGrip = (mat: MaterialName) => !NO_GRIP.includes(mat);
 
-const box = (pos: Vec3, size: Vec3, blocksCamera: boolean, grip: boolean): Collider => ({
+const box = (pos: Vec3, size: Vec3, blocksCamera: boolean, grip: boolean, bounce = false): Collider => ({
   min: [...pos],
   max: [pos[0] + size[0], pos[1] + size[1], pos[2] + size[2]],
   blocksCamera,
   grip,
+  ...(bounce ? { bounce } : {}),
 });
 
 /** Turns a box around the y axis (90-degree steps), the same way Three.js turns the prop's model. */
@@ -42,11 +43,11 @@ export function turnBox(min: Vec3, max: Vec3, degrees: number): { min: Vec3; max
 export function pieceColliders(p: Piece): Collider[] {
   switch (p.kind) {
     case 'box':
-      return p.solid === false ? [] : [box(p.pos, p.size, true, hasGrip(p.mat))];
+      return p.solid === false ? [] : [box(p.pos, p.size, true, hasGrip(p.mat), BOUNCY.includes(p.mat))];
     case 'cylinder': {
       if (p.solid === false) return [];
       const h = p.radius * 0.85;
-      return [box([p.pos[0] - h, p.pos[1], p.pos[2] - h], [h * 2, p.height, h * 2], true, hasGrip(p.mat))];
+      return [box([p.pos[0] - h, p.pos[1], p.pos[2] - h], [h * 2, p.height, h * 2], true, hasGrip(p.mat), BOUNCY.includes(p.mat))];
     }
     case 'barrier':
       return [box(p.pos, p.size, false, false)];

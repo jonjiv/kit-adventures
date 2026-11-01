@@ -24,4 +24,19 @@ export const OBSTACLE = {
   /** Space between the walls of a wall-jump chimney. */
   chimneyGap: 2.2,
   chimneyHeight: 7,
+
+  // Each themed level's own obstacle.
+  /** Garden: a cliff only a mushroom bounce gets you up. */
+  mushroomCliff: 5,
+  /** City: a rooftop only the wind from a fan lifts you onto. */
+  fanLift: 6,
+  /** How far below the path the fan's grate is. */
+  fanDepth: 3,
+  /** Moon: a crater only a low-gravity jump crosses. */
+  craterGap: 12,
+  /** Moon: a cliff only a low-gravity double jump reaches. */
+  floatyCliff: 7,
+  /** Hills are stairs this tall and deep, small enough to walk up and down. */
+  hillStep: 0.15,
+  hillStepDepth: 0.5,
 } as const;

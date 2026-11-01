@@ -30,6 +30,18 @@ function roundedBox(size: [number, number, number], round: number): THREE.Buffer
   return new RoundedBoxGeometry(size[0], size[1], size[2], 3, r);
 }
 
+/**
+ * A round, puffy mushroom cap with a pale underside. It bulges a little above
+ * its collision top in the middle, so the cat looks like it sinks in.
+ */
+function mushroomCap(pos: [number, number, number], radius: number, height: number): Part[] {
+  const profile = [[radius, 0], [radius * 1.02, height * 0.5], [radius * 0.85, height * 1.0], [radius * 0.55, height * 1.25], [0, height * 1.35]]
+    .map(([x, y]) => new THREE.Vector2(x, y));
+  const cap = new THREE.LatheGeometry(profile, 24).translate(...pos);
+  const under = new THREE.CircleGeometry(radius, 24).rotateX(Math.PI / 2).translate(pos[0], pos[1], pos[2]);
+  return [{ surface: 'mushroom', geometry: cap }, { surface: 'white', geometry: under }];
+}
+
 function pieceParts(p: Piece): Part[] {
   const center = (pos: number[], size: number[]) => pos.map((v, i) => v + size[i] / 2) as [number, number, number];
   switch (p.kind) {
@@ -38,6 +50,7 @@ function pieceParts(p: Piece): Part[] {
       return [{ surface: p.mat, geometry: g.translate(...center(p.pos, p.size)) }];
     }
     case 'cylinder': {
+      if (p.mat === 'mushroom') return mushroomCap(p.pos, p.radius, p.height);
       const segments = Math.max(12, Math.min(32, Math.round(p.radius * 12)));
       const g = new THREE.CylinderGeometry(p.radius, p.radius, p.height, segments);
       return [{ surface: p.mat, geometry: g.translate(p.pos[0], p.pos[1] + p.height / 2, p.pos[2]) }];

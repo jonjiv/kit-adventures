@@ -4,7 +4,7 @@ import type { TouchSettings } from '../engine/touchControls';
 /** How long the controls reminder stays up once play starts. */
 const SHOW_CONTROLS_FOR = 30;
 
-const KEYBOARD_CONTROLS = '<b>WASD</b> run · <b>Mouse</b> look · <b>Space</b> jump · <b>Shift</b> dash · <b>Wheel</b> zoom';
+const KEYBOARD_CONTROLS = '<b>WASD</b> run · <b>Mouse</b> look · <b>Space</b> jump · <b>Shift</b> dash · <b>Wheel</b> zoom · <b>M</b> sound';
 const TOUCH_CONTROLS = '<b>Left thumb</b> run · <b>Right thumb</b> look · <b>JUMP</b> · <b>DASH</b>';
 const TOUCH_CONTROLS_LEFT = '<b>Right thumb</b> run · <b>Left thumb</b> look · <b>JUMP</b> · <b>DASH</b>';
 
