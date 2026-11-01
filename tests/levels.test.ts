@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { cityLevel, gardenLevel, gymLevel, moonLevel } from '../scripts/build-levels';
+import { cityLevel, gardenLevel, moonLevel, tutorialLevel } from '../scripts/build-levels';
 import type { PathBuilder } from '../scripts/pathBuilder';
 import type { CollisionWorld } from '../src/world/collision';
 import { levelFromJson } from '../src/world/level';
@@ -39,8 +39,8 @@ function reachable(file: LevelFile, world: CollisionWorld, start: [number, numbe
 }
 
 const LEVELS: [string, string, () => { file: LevelFile; builder: PathBuilder }][] = [
+  ['Tutorial', 'tutorial.json', tutorialLevel],
   ['Garden Path', 'garden.json', gardenLevel],
-  ['Parkour Gym', 'gym.json', gymLevel],
   ['City Rooftops', 'city.json', cityLevel],
   ['Moon Base', 'moon.json', moonLevel],
 ];
@@ -64,6 +64,18 @@ describe.each(LEVELS)('%s', (_name, json, make) => {
     const checkpoints = file.objects.filter((o) => o.type === 'checkpoint');
     expect(checkpoints.length).toBeGreaterThanOrEqual(5);
     for (const c of checkpoints) expect(standsOnGround(c.pos), `checkpoint at ${c.pos.join(',')}`).toBe(true);
+  });
+
+  it('ends with one race goal, on top of the golden pad', () => {
+    const goals = file.objects.filter((o) => o.type === 'goal');
+    expect(goals.length).toBe(1);
+    const [x, y, z] = goals[0].pos;
+    expect(level.goal).toEqual(goals[0].pos);
+    const pad = file.pieces.find((p) => p.kind === 'box' && p.mat === 'yellow' &&
+      x > p.pos[0] && x < p.pos[0] + p.size[0] && z > p.pos[2] && z < p.pos[2] + p.size[2]);
+    expect(pad).toBeDefined();
+    if (pad?.kind === 'box') expect(pad.pos[1] + pad.size[1]).toBeCloseTo(y, 5);
+    expect(standsOnGround(goals[0].pos)).toBe(true);
   });
 
   it('has no two different surfaces on the same plane (they would flicker)', () => {

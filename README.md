@@ -29,6 +29,8 @@ Movement and feel numbers live in `src/player/tuning.ts`.
 | Sound on/off | M, or the speaker button in the top corner |
 | Show/hide fps | F3 |
 
+Every level starts with a 3, 2, 1, GO! countdown. Reach the golden pad at the end as fast as you can, then type your name for the leaderboard.
+
 On an iPad or phone, touch controls appear after the first touch (hold it sideways):
 
 | Action | Touch |
@@ -42,6 +44,17 @@ On an iPad or phone, touch controls appear after the first touch (hold it sidewa
 | Pause | Pause button, top right. The pause panel has Settings: button size, camera speed and left-handed mode |
 
 To try it on a real iPad or phone on the same Wi-Fi: `npm run dev -- --host`, then open the "Network" address it prints. You can also add the game to the home screen (Share > Add to Home Screen) to open it full screen like an app.
+
+## Global leaderboard
+
+Until it's set up, times are saved on each device. To share them with everyone (free, about 5 minutes):
+
+1. Make a free account at https://supabase.com and create a new project (any name, any region).
+2. In the project, open **SQL Editor**, paste in all of `supabase/scores.sql`, and press **Run**.
+3. Open **Project Settings > API Keys** (or **Data API**). Copy the **Project URL** and the **publishable** key (the `anon public` key on older projects). Never use the `secret` / `service_role` key: it can delete everything.
+4. Put them in `src/leaderboard/config.ts`, then commit and push. The publishable key is safe to be public.
+
+To remove a time, open **Table Editor > scores** in Supabase and delete the row.
 
 ## Play online
 

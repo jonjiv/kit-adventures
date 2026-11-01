@@ -429,9 +429,10 @@ export class PathBuilder {
     return this.L.toLevel(name, theme);
   }
 
-  /** Remembers a spot (path-local) as the end of the level, for tests. */
-  markGoal(s: number, f: number): void {
+  /** Marks the end of the level: the race finishes when the cat stands here, `top` above the path. */
+  markGoal(s: number, f: number, top = 0): void {
     const [x, z] = this.world(s, f);
     this.goal = [x, this.H, z];
+    this.L.add({ type: 'goal', pos: [x, this.H + top, z] });
   }
 }

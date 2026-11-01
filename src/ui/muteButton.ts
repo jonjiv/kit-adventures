@@ -1,4 +1,5 @@
 import type { Sounds } from '../audio/sounds';
+import { isTyping } from '../engine/input';
 
 const SPEAKER = '<path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>';
 const ON = `<svg viewBox="0 0 24 24" width="28" height="28">${SPEAKER}<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
@@ -20,7 +21,7 @@ export class MuteButton {
       this.toggle();
     });
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'KeyM' && !e.repeat) this.toggle();
+      if (e.code === 'KeyM' && !e.repeat && !isTyping(e)) this.toggle();
     });
     parent.appendChild(this.el);
     this.refresh();

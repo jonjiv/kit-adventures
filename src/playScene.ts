@@ -1,4 +1,4 @@
-// One level being played: the world, the cat, the camera, checkpoints and effects.
+// One level being played: the world, the cat, the camera, checkpoints, effects and the race.
 
 import * as THREE from 'three';
 import type { Sounds } from './audio/sounds';
@@ -10,8 +10,9 @@ import { ZoneEffects } from './entities/zoneEffects';
 import { buildSign } from './entities/sign';
 import { DEFAULT_LOOK } from './player/catLook';
 import { CatModel } from './player/catModel';
-import { facingFromYaw, PlayerController } from './player/playerController';
+import { facingFromYaw, NO_INPUT, PlayerController } from './player/playerController';
 import { TOUCH_PLAYER, TUNING } from './player/tuning';
+import { Race, type RaceEvent } from './race/race';
 import type { Level } from './world/level';
 import { buildLevelMesh } from './world/levelMesh';
 import { MaterialLibrary } from './world/materials';
@@ -26,6 +27,9 @@ export class PlayScene {
   readonly scene = new THREE.Scene();
   readonly player: PlayerController;
   readonly camera: FollowCamera;
+  readonly race: Race;
+  /** Called when the cat reaches the golden pad, with the time in milliseconds. */
+  onFinish: (ms: number) => void = () => {};
   private level: Level;
   private input: Input;
   private sounds: Sounds;
@@ -63,6 +67,7 @@ export class PlayScene {
       level.collision, level.start.pos, facingFromYaw(yaw), TUNING.player, file.killY ?? TUNING.player.killHeight,
     );
     this.player.zones = level.zones;
+    this.race = new Race(level.goal);
     this.cat = new CatModel(DEFAULT_LOOK);
     this.scene.add(this.cat.root);
 
@@ -82,10 +87,17 @@ export class PlayScene {
   }
 
   fixedUpdate(dt: number): void {
-    const { input, player: p } = this;
+    const { input, player: p, race } = this;
+    // The cat waits for GO!
+    if (race.phase === 'countdown') {
+      this.raceEvent(race.step(dt, p.pos));
+      return;
+    }
+    // After the finish the controls do nothing, but the cat still lands and slows to a stop.
+    const finished = race.phase === 'finished';
     const dir = this.camera.moveIntent(input.moveAxes());
     p.useTuning(input.touch.active ? TOUCH_PLAYER : TUNING.player);
-    p.step({
+    p.step(finished ? NO_INPUT : {
       x: dir.x, z: dir.z,
       jumpPressed: input.jumpPressed(), jumpHeld: input.jumpHeld(), dashPressed: input.dashPressed(),
     }, dt);
@@ -155,6 +167,20 @@ export class PlayScene {
           count: 18, colors: RAINBOW, speed: 3.5, life: 0.7, size: 0.08, gravity: 3,
         });
       }
+    }
+    if (!finished) this.raceEvent(race.step(dt, p.pos));
+  }
+
+  private raceEvent(e: RaceEvent | null): void {
+    if (!e) return;
+    this.sounds.play(e);
+    if (e === 'finish') {
+      const p = this.player.pos;
+      this.cat.trigger('doubleJump');
+      this.particles.burst(new THREE.Vector3(p[0], p[1] + 0.8, p[2]), {
+        count: 60, colors: RAINBOW, speed: 5, life: 1.2, size: 0.1, gravity: 4,
+      });
+      this.onFinish(this.race.timeMs);
     }
   }
 

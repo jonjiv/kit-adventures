@@ -6,7 +6,8 @@ import { TUNING } from '../player/tuning';
 
 export type SoundName =
   | 'jump' | 'doubleJump' | 'wallJump' | 'wallRun' | 'wallStep' | 'ledgeGrab' | 'climb'
-  | 'dash' | 'land' | 'respawn' | 'checkpoint' | 'bounce' | 'updraft' | 'lowGravity' | 'click';
+  | 'dash' | 'land' | 'respawn' | 'checkpoint' | 'bounce' | 'updraft' | 'lowGravity' | 'click'
+  | 'beep' | 'go' | 'finish';
 
 const MUTED_KEY = 'kit-adventures.muted';
 
@@ -110,6 +111,18 @@ export class Sounds {
       case 'lowGravity':
         this.tone('sine', 380, 760, 0.6, 0.18, 0, 7);
         this.tone('sine', 760, 380, 0.6, 0.1, 0.3, 5);
+        break;
+      case 'beep':
+        this.tone('square', 440, 440, 0.18, 0.18);
+        break;
+      case 'go':
+        this.tone('square', 880, 880, 0.45, 0.2);
+        this.tone('triangle', 1320, 1320, 0.45, 0.15);
+        break;
+      case 'finish':
+        // A happy little fanfare.
+        [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.tone('triangle', f, f, i === 5 ? 0.6 : 0.14, 0.25, i * 0.11));
+        this.tone('sine', 1568, 2093, 0.5, 0.1, 0.55, 6);
         break;
       case 'click':
         this.tone('triangle', 700, 900, 0.05, 0.15);

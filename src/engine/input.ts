@@ -5,6 +5,11 @@ import { TouchControls } from './touchControls';
 
 const BLOCK_DEFAULT = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab']);
 
+/** True while typing in a text box (like the leaderboard name), so game keys leave the keys alone. */
+export function isTyping(e: KeyboardEvent): boolean {
+  return e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+}
+
 export class Input {
   readonly touch: TouchControls;
   private canvas: HTMLElement;
@@ -18,6 +23,7 @@ export class Input {
     this.canvas = canvas;
     this.touch = new TouchControls(uiParent);
     window.addEventListener('keydown', (e) => {
+      if (isTyping(e)) return;
       if (BLOCK_DEFAULT.has(e.code)) e.preventDefault();
       if (!e.repeat) this.pressed.add(e.code);
       this.down.add(e.code);
@@ -51,6 +57,12 @@ export class Input {
   startPlaying(): void {
     if (this.touch.active) this.touch.play();
     else this.lockPointer();
+  }
+
+  /** Stops playing without showing the start panel's own pause: frees the mouse or hides the touch controls. */
+  stopPlaying(): void {
+    if (this.touch.active) this.touch.pause();
+    else if (this.pointerLocked) document.exitPointerLock();
   }
 
   lockPointer(): void {

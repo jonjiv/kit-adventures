@@ -196,9 +196,9 @@ function finale(P: PathBuilder, label?: string): void {
     P.H += 1.2 * (count + 1);
     const end = 3 + count * spacing + 1;
     P.floor(end, len);
-    // Golden pad where the rainbow portal will go (Phase 4).
+    // The golden pad: the race ends here (the rainbow portal will go here in Phase 4).
     P.block(-1.5, len - 6, 1.5, len - 3, P.H, P.H + 0.2, 'yellow', { round: 0.1 });
-    P.markGoal(0, len - 4.5);
+    P.markGoal(0, len - 4.5, 0.2);
     P.prop('flowers', -P.half + 0.8, len - 2);
     P.prop('flowers', P.half - 0.8, len - 7);
     if (label) P.sign(end + 1, label);
@@ -474,13 +474,13 @@ export function gardenLevel(): { file: LevelFile; builder: PathBuilder } {
   });
 }
 
-/** Parkour Gym: one station per move, each with a sign and a checkpoint. */
-export function gymLevel(): { file: LevelFile; builder: PathBuilder } {
+/** Tutorial: one station per move, each with a sign and a checkpoint. */
+export function tutorialLevel(): { file: LevelFile; builder: PathBuilder } {
   const P = new PathBuilder();
   startLawn(P, 8);
   P.segment(6, () => {
     P.floor(0, 6);
-    P.sign(3, 'Parkour Gym!');
+    P.sign(3, 'Tutorial!');
   });
   const station = (text: string, build: () => void) => {
     P.segment(6, () => {
@@ -500,7 +500,7 @@ export function gymLevel(): { file: LevelFile; builder: PathBuilder } {
   station('Wall jump!\nSpace when touching a wall', () => chimney(P));
   station('Dash!\nShift in the air', () => gap(P, O.gapDash));
   finale(P, 'You did it!');
-  return { file: P.build('Parkour Gym', 'backyard', 3), builder: P };
+  return { file: P.build('Tutorial', 'backyard', 3), builder: P };
 }
 
 /** City Rooftops: high above the streets at sunset, with fans whose wind lifts you. */
@@ -531,8 +531,8 @@ export function moonLevel(): { file: LevelFile; builder: PathBuilder } {
 
 // Only write files when run as a script, not when tests import the levels.
 if (process.argv[1]?.endsWith('build-levels.ts')) {
+  save('tutorial.json', tutorialLevel().file);
   save('garden.json', gardenLevel().file);
-  save('gym.json', gymLevel().file);
   save('city.json', cityLevel().file);
   save('moon.json', moonLevel().file);
 }

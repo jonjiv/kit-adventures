@@ -59,7 +59,7 @@ export type Piece =
 
 export interface LevelObject {
   type: string;
-  /** For the start point: where the cat's feet go. */
+  /** For the start point: where the cat's feet go. For the goal: the middle of the top of the golden pad. */
   pos: Vec3;
   /** Second point for moving platforms and enemy patrols. */
   to?: Vec3;

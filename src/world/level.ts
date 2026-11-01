@@ -1,12 +1,14 @@
 import { levelColliders } from './colliders';
 import { CollisionWorld } from './collision';
-import { validateLevel, type LevelFile, type LevelObject } from './levelFormat';
+import { validateLevel, type LevelFile, type LevelObject, type Vec3 } from './levelFormat';
 import { levelZones, type Zone } from './zones';
 
 export interface Level {
   file: LevelFile;
   collision: CollisionWorld;
   start: LevelObject;
+  /** Middle of the top of the golden pad at the end, if the level has one. */
+  goal: Vec3 | null;
   zones: Zone[];
 }
 
@@ -17,7 +19,8 @@ export function levelFromJson(data: unknown): Level {
   const file = data as LevelFile;
   const start = file.objects.find((o) => o.type === 'start');
   if (!start) throw new Error('The level needs a start point.');
-  return { file, collision: new CollisionWorld(levelColliders(file)), start, zones: levelZones(file) };
+  const goal = file.objects.find((o) => o.type === 'goal')?.pos ?? null;
+  return { file, collision: new CollisionWorld(levelColliders(file)), start, goal, zones: levelZones(file) };
 }
 
 export async function loadLevel(url: string): Promise<Level> {

@@ -27,10 +27,19 @@ const SETTING_ROWS = [
 ] as const satisfies readonly SettingRow<keyof TouchSettings>[];
 
 /**
- * The "Click to play" / "Tap to play" panel with buttons to pick a level
- * (shown whenever the game is paused), and a reminder of the controls for the
- * first 30 seconds. On touch it also has a Settings page for the touch controls.
+ * The "Click to play" / "Tap to play" panel with buttons to pick a level and
+ * see the leaderboard (shown whenever the game is paused), and a reminder of the
+ * controls for the first 30 seconds. On touch it also has a Settings page for
+ * the touch controls.
  */
+export interface PlayHintActions {
+  /** A level button was pressed. */
+  pick: (id: string) => void;
+  /** The panel itself was pressed: carry on playing. */
+  resume: () => void;
+  leaderboard: () => void;
+}
+
 export class PlayHint {
   private panel: HTMLDivElement;
   private title: HTMLDivElement;
@@ -44,7 +53,7 @@ export class PlayHint {
   private playTime = 0;
   private wasTouch: boolean | null = null;
 
-  constructor(parent: HTMLElement, input: Input, levels: LevelChoice[], onPick: (id: string) => void) {
+  constructor(parent: HTMLElement, input: Input, levels: LevelChoice[], actions: PlayHintActions) {
     this.input = input;
     this.panel = document.createElement('div');
     this.panel.className = 'start-panel';
@@ -61,8 +70,7 @@ export class PlayHint {
       b.textContent = level.name;
       b.addEventListener('click', (e) => {
         e.stopPropagation();
-        onPick(level.id);
-        input.startPlaying();
+        actions.pick(level.id);
       });
       row.appendChild(b);
       this.buttons.set(level.id, b);
@@ -74,13 +82,23 @@ export class PlayHint {
       e.stopPropagation();
       this.showSettings(true);
     });
-    this.main.append(row, this.settingsButton);
+    const boardButton = document.createElement('button');
+    boardButton.className = 'small-button';
+    boardButton.textContent = '🏆 Leaderboard';
+    boardButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      actions.leaderboard();
+    });
+    const smallRow = document.createElement('div');
+    smallRow.className = 'button-row';
+    smallRow.append(boardButton, this.settingsButton);
+    this.main.append(row, smallRow);
 
     this.settings = this.buildSettings();
     this.settings.hidden = true;
     this.panel.append(this.title, this.main, this.settings);
     this.panel.addEventListener('click', () => {
-      if (this.settings.hidden) input.startPlaying();
+      if (this.settings.hidden) actions.resume();
     });
 
     this.controls = document.createElement('div');
@@ -93,15 +111,16 @@ export class PlayHint {
     this.playTime = 0;
   }
 
-  update(dt: number): void {
+  /** `covered` is true while the finish or leaderboard screen is up, which hides this panel. */
+  update(dt: number, covered: boolean): void {
     const playing = this.input.playing;
-    this.panel.hidden = playing;
+    this.panel.hidden = playing || covered;
     if (playing) this.playTime += dt;
     this.controls.classList.toggle('faded', this.playTime > SHOW_CONTROLS_FOR);
 
     const touch = this.input.touch.active;
     // On phones the panel fills the screen, so the reminder waits until play starts.
-    this.controls.hidden = touch && !playing;
+    this.controls.hidden = (touch && !playing) || covered;
     if (touch !== this.wasTouch) {
       this.wasTouch = touch;
       if (!touch) this.showSettings(false);

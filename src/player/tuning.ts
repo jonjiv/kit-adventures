@@ -192,6 +192,18 @@ export const TUNING = {
     },
   },
 
+  /** The race in every level: countdown, timer and the golden pad at the end. */
+  race: {
+    /** Seconds of 3, 2, 1 before GO, with the cat held still. */
+    countdownSeconds: 3,
+    /** How long GO! stays on screen. */
+    goShowSeconds: 1,
+    /** The golden pad counts this far from its middle, sideways (it's 3 m across). */
+    goalHalfSize: 1.6,
+    /** The cat's feet can be up to this high above the pad and still count. */
+    goalReach: 1,
+  },
+
   sound: {
     /** Loudness of all sound effects (0 to 1). */
     volume: 0.6,
