@@ -34,7 +34,7 @@ describe('validateLevel', () => {
   it('finds problems', () => {
     expect(validateLevel(null)).not.toEqual([]);
     expect(validateLevel({ ...good(), version: 1 })).not.toEqual([]);
-    expect(validateLevel({ ...good(), theme: 'moon' })).not.toEqual([]);
+    expect(validateLevel({ ...good(), theme: 'jungle' })).not.toEqual([]);
     expect(validateLevel({ ...good(), size: [0, 2, 2] })).not.toEqual([]);
     expect(validateLevel({ ...good(), size: [999, 2, 2] })).not.toEqual([]);
     expect(validateLevel({ ...good(), pieces: [{ kind: 'box', pos: [0, 0, 0], size: [1, 1, 1], mat: 'cheese' }] })).not.toEqual([]);

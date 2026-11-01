@@ -15,6 +15,8 @@ export interface ThemeStyle {
   hemiGround: number;
   hemiIntensity: number;
   clouds: boolean;
+  /** Twinkly stars and the Earth in the sky (space levels). */
+  space?: boolean;
 }
 
 export const THEME_STYLES: Record<Theme, ThemeStyle> = {
@@ -38,5 +40,12 @@ export const THEME_STYLES: Record<Theme, ThemeStyle> = {
     skyTop: 0x5a4aa8, skyHorizon: 0xffb08a, fog: 0xf4b49c, fogNear: 50, fogFar: 150,
     sunColor: 0xffd0a0, sunIntensity: 1.7, sunDir: [-0.6, 0.8, 0.4],
     hemiSky: 0xffd8e8, hemiGround: 0x5a5070, hemiIntensity: 1.1, clouds: true,
+  },
+  // Black space with stars and the Earth, and bright white sunlight.
+  moon: {
+    label: 'Moon',
+    skyTop: 0x020414, skyHorizon: 0x1a2050, fog: 0x141a40, fogNear: 60, fogFar: 170,
+    sunColor: 0xffffff, sunIntensity: 2, sunDir: [0.4, 0.9, -0.5],
+    hemiSky: 0xb8c8ff, hemiGround: 0x404050, hemiIntensity: 0.9, clouds: false, space: true,
   },
 };

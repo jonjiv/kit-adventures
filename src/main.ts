@@ -12,6 +12,8 @@ import { loadLevel } from './world/level';
 const LEVELS = [
   { id: 'garden', name: 'Garden Path', file: 'garden.json' },
   { id: 'gym', name: 'Parkour Gym', file: 'gym.json' },
+  { id: 'city', name: 'City Rooftops', file: 'city.json' },
+  { id: 'moon', name: 'Moon Base', file: 'moon.json' },
 ];
 
 async function start(app: HTMLElement) {

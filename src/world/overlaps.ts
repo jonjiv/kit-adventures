@@ -3,7 +3,7 @@
 // flicker ("z-fighting"). Used by tests to keep levels flicker-free.
 // No Three.js here so it runs in unit tests.
 
-import type { LevelFile, Piece, Vec3 } from './levelFormat';
+import { SEE_THROUGH, type LevelFile, type Piece, type Vec3 } from './levelFormat';
 
 /** Default corner rounding per material (must match materials.ts). */
 export type RoundLookup = (mat: string) => number;
@@ -68,7 +68,7 @@ function pieceFaces(i: number, p: Piece, round: RoundLookup): Face[] {
 function opaqueBoxes(level: LevelFile): { i: number; min: Vec3; max: Vec3 }[] {
   const out: { i: number; min: Vec3; max: Vec3 }[] = [];
   level.pieces.forEach((p, i) => {
-    if (p.kind === 'box' && p.mat !== 'glass') {
+    if (p.kind === 'box' && !SEE_THROUGH.includes(p.mat)) {
       out.push({ i, min: p.pos, max: [p.pos[0] + p.size[0], p.pos[1] + p.size[1], p.pos[2] + p.size[2]] });
     }
   });

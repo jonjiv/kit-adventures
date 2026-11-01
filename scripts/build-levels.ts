@@ -10,7 +10,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import type { LevelFile } from '../src/world/levelFormat.ts';
 import { OBSTACLE as O } from './obstacles.ts';
-import { PathBuilder } from './pathBuilder.ts';
+import { CITY_STYLE, MOON_STYLE, PathBuilder } from './pathBuilder.ts';
 
 function save(file: string, level: LevelFile): void {
   mkdirSync(new URL('../public/levels/', import.meta.url), { recursive: true });
@@ -100,6 +100,20 @@ function doubleWallRun(P: PathBuilder): void {
     P.block(-2.5, 3, -1.5, 12.5, P.base, P.H + O.tallWall, 'brick');
     P.block(1.5, 10.5, 2.5, 21, P.base, P.H + O.tallWall, 'brick');
     P.floor(20, len);
+  });
+}
+
+/** Three gaps in a row, each bigger: jump, jump, then double jump. */
+function gapRun(P: PathBuilder): void {
+  const a = O.gapJump, b = O.gapJump, c = O.gapDouble, len = 3 + a + 3 + b + 3 + c + 3;
+  P.segment(len, () => {
+    let f = 0;
+    for (const size of [a, b, c]) {
+      P.floor(f, f + 3);
+      P.pit(f + 3, f + 3 + size);
+      f += 3 + size;
+    }
+    P.floor(f, len);
   });
 }
 
@@ -252,8 +266,70 @@ export function gymLevel(): { file: LevelFile; builder: PathBuilder } {
   return { file: P.build('Parkour Gym', 'backyard', 3), builder: P };
 }
 
+/** City Rooftops: run and jump across the rooftops at sunset, 18 obstacles. */
+export function cityLevel(): { file: LevelFile; builder: PathBuilder } {
+  const P = new PathBuilder({ style: CITY_STYLE });
+  startLawn(P);
+  hurdles(P); // 1: air vents
+  gapRun(P); // 2: gaps between buildings
+  jumpUp(P, O.ledgeDouble, 'brick'); // 3
+  P.turn('left', true);
+  wallRun(P, 1); // 4
+  stumps(P, 3, 3.6); // 5: poles
+  plank(P); // 6: a steel beam
+  P.turn('right', true);
+  jumpUp(P, O.ledgeGrab, 'stone'); // 7
+  gap(P, O.gapDash); // 8
+  chimney(P); // 9
+  P.turn('right', true);
+  downSteps(P); // 10
+  doubleWallRun(P); // 11
+  zigzag(P); // 12: fire escape
+  P.turn('left', true);
+  islandHop(P); // 13
+  tower(P); // 14
+  stumps(P, 4, 4.6); // 15
+  P.turn('left', true);
+  gap(P, O.gapDouble); // 16
+  hurdles(P); // 17
+  finale(P); // 18
+  return { file: P.build('City Rooftops', 'city', 11), builder: P };
+}
+
+/** Moon Base: dusty paths between force fields, under the stars and the Earth, 18 obstacles. */
+export function moonLevel(): { file: LevelFile; builder: PathBuilder } {
+  const P = new PathBuilder({ style: MOON_STYLE });
+  startLawn(P);
+  jumpUp(P); // 1
+  stumps(P, 3, 3.6); // 2: metal pylons
+  gap(P, O.gapDouble); // 3
+  P.turn('right', true);
+  zigzag(P); // 4
+  wallRun(P, -1); // 5
+  jumpUp(P, O.ledgeGrab, 'stone'); // 6
+  P.turn('right', true);
+  plank(P); // 7
+  islandHop(P); // 8
+  chimney(P); // 9
+  P.turn('left', true);
+  downSteps(P); // 10
+  gapRun(P); // 11
+  doubleWallRun(P); // 12
+  P.turn('left', true);
+  tower(P); // 13
+  gap(P, O.gapDash); // 14
+  hurdles(P); // 15
+  P.turn('left', true);
+  stumps(P, 4, 4.6); // 16
+  jumpUp(P, O.ledgeDouble, 'brick'); // 17
+  finale(P); // 18
+  return { file: P.build('Moon Base', 'moon', 5), builder: P };
+}
+
 // Only write files when run as a script, not when tests import the levels.
 if (process.argv[1]?.endsWith('build-levels.ts')) {
   save('garden.json', gardenLevel().file);
   save('gym.json', gymLevel().file);
+  save('city.json', cityLevel().file);
+  save('moon.json', moonLevel().file);
 }

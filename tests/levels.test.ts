@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { gardenLevel, gymLevel } from '../scripts/build-levels';
+import { cityLevel, gardenLevel, gymLevel, moonLevel } from '../scripts/build-levels';
 import type { PathBuilder } from '../scripts/pathBuilder';
 import type { CollisionWorld } from '../src/world/collision';
 import { levelFromJson } from '../src/world/level';
-import { SKY_BARRIER_HEIGHT, validateLevel, type LevelFile } from '../src/world/levelFormat';
+import { NO_GRIP, SKY_BARRIER_HEIGHT, validateLevel, type LevelFile } from '../src/world/levelFormat';
 import { surfaceRound, type SurfaceName } from '../src/world/materials';
 import { findOverlaps } from '../src/world/overlaps';
 
@@ -41,6 +41,8 @@ function reachable(file: LevelFile, world: CollisionWorld, start: [number, numbe
 const LEVELS: [string, string, () => { file: LevelFile; builder: PathBuilder }][] = [
   ['Garden Path', 'garden.json', gardenLevel],
   ['Parkour Gym', 'gym.json', gymLevel],
+  ['City Rooftops', 'city.json', cityLevel],
+  ['Moon Base', 'moon.json', moonLevel],
 ];
 
 describe.each(LEVELS)('%s', (_name, json, make) => {
@@ -84,6 +86,14 @@ describe.each(LEVELS)('%s', (_name, json, make) => {
     const leaky = levelFromJson({ ...file, pieces: file.pieces.filter((p) => p.kind !== 'barrier') });
     const seen = reachable(file, leaky.collision, [level.start.pos[0], level.start.pos[2]]);
     expect(builder.outside.some(([x, z]) => seen.has(`${Math.floor(x)},${Math.floor(z)}`))).toBe(true);
+  });
+});
+
+describe('the walls along every path have no grip, so they cannot be wall-run past an obstacle', () => {
+  it.each(LEVELS)('%s', (_name, _json, make) => {
+    const { builder } = make();
+    expect(NO_GRIP).toContain(builder.style.side);
+    expect(NO_GRIP).toContain(builder.mat('leaves'));
   });
 });
 

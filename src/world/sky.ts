@@ -12,6 +12,8 @@ export class Sky {
   readonly sun: THREE.DirectionalLight;
   private dome: THREE.Mesh;
   private clouds = new THREE.Group();
+  /** Stars and the Earth, which stay put around the camera like the sky. */
+  private space = new THREE.Group();
   private sunDir: THREE.Vector3;
   private cloudSpan: number;
   private center: THREE.Vector3;
@@ -70,6 +72,8 @@ export class Sky {
 
     if (style.clouds) this.makeClouds();
     this.group.add(this.clouds);
+    if (style.space) this.makeSpace();
+    this.group.add(this.space);
   }
 
   applyFog(scene: THREE.Scene, style: ThemeStyle): void {
@@ -82,6 +86,46 @@ export class Sky {
   followShadow(target: THREE.Vector3): void {
     this.sun.target.position.copy(target);
     this.sun.position.copy(target).addScaledVector(this.sunDir, 100);
+  }
+
+  private makeSpace(): void {
+    const count = 900, pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      // Random directions above the horizon (and a little below, behind the hills).
+      const y = Math.random() * 1.1 - 0.1, a = Math.random() * Math.PI * 2, r = Math.sqrt(1 - y * y);
+      pos.set([Math.cos(a) * r * 450, y * 450, Math.sin(a) * r * 450], i * 3);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const stars = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, fog: false }));
+    stars.renderOrder = -1;
+
+    // The Earth: blue oceans, green land and white clouds, painted in code.
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#2a6ad8';
+    ctx.fillRect(0, 0, 128, 64);
+    const blob = (color: string, n: number, size: number) => {
+      ctx.fillStyle = color;
+      for (let i = 0; i < n; i++) {
+        ctx.beginPath();
+        ctx.ellipse(Math.random() * 128, 8 + Math.random() * 48, size * (0.5 + Math.random()), size * 0.6 * (0.5 + Math.random()), Math.random() * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+    blob('#4aa850', 14, 9);
+    blob('rgba(255,255,255,0.85)', 18, 6);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const earth = new THREE.Mesh(
+      new THREE.SphereGeometry(28, 24, 16),
+      new THREE.MeshBasicMaterial({ map: tex, fog: false }),
+    );
+    earth.position.set(-180, 260, -250);
+    earth.rotation.set(0.4, 1, 0);
+    this.space.add(stars, earth);
   }
 
   private makeClouds(): void {
@@ -108,6 +152,7 @@ export class Sky {
 
   update(dt: number, cameraPos: THREE.Vector3): void {
     this.dome.position.copy(cameraPos);
+    this.space.position.copy(cameraPos);
     const half = this.cloudSpan / 2;
     for (const cloud of this.clouds.children) {
       cloud.position.x += CLOUD_DRIFT * dt;

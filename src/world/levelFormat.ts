@@ -9,8 +9,8 @@
 export const LEVEL_FORMAT_VERSION = 2;
 
 export type Vec3 = [number, number, number];
-export type Theme = 'house' | 'backyard' | 'city';
-export const THEMES: readonly Theme[] = ['house', 'backyard', 'city'];
+export type Theme = 'house' | 'backyard' | 'city' | 'moon';
+export const THEMES: readonly Theme[] = ['house', 'backyard', 'city', 'moon'];
 
 /** Biggest level the game will load (the editor uses a smaller limit). */
 export const MAX_LEVEL_SIZE: Vec3 = [256, 96, 256];
@@ -19,8 +19,17 @@ export const MAX_LEVEL_SIZE: Vec3 = [256, 96, 256];
 export const MATERIALS = [
   'grass', 'dirt', 'wood', 'stone', 'brick', 'glass', 'carpet', 'fabric', 'roof',
   'plaster', 'metal', 'leaves', 'bark', 'white', 'red', 'yellow', 'blue', 'pink',
+  'asphalt', 'building', 'moondust', 'moonrock', 'panel', 'forcefield',
 ] as const;
 export type MaterialName = (typeof MATERIALS)[number];
+
+/** Surfaces you can see through. */
+export const SEE_THROUGH: readonly MaterialName[] = ['glass', 'forcefield'];
+/**
+ * Soft or slippery surfaces: no wall runs, wall jumps or ledge grabs on them.
+ * Path walls use these, so you can't wall-run past an obstacle.
+ */
+export const NO_GRIP: readonly MaterialName[] = ['leaves', 'glass', 'forcefield'];
 
 /** Props are ready-made decorations built in code (see src/world/props.ts). */
 export const PROPS = ['tree', 'bush', 'flowers', 'rock'] as const;

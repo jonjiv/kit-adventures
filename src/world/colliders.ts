@@ -2,7 +2,7 @@
 // collides as a plain box. No Three.js here so it runs in unit tests.
 
 import type { Collider } from './collision';
-import { SKY_BARRIER_HEIGHT, type LevelFile, type MaterialName, type Piece, type PropName, type Vec3 } from './levelFormat';
+import { NO_GRIP, SKY_BARRIER_HEIGHT, type LevelFile, type MaterialName, type Piece, type PropName, type Vec3 } from './levelFormat';
 
 /** Prop collision boxes around the base center, before turning and scaling. null = walk through. */
 const PROP_BOXES: Record<PropName, { min: Vec3; max: Vec3; grip: boolean } | null> = {
@@ -13,7 +13,7 @@ const PROP_BOXES: Record<PropName, { min: Vec3; max: Vec3; grip: boolean } | nul
 };
 
 /** Bushy surfaces are too soft to wall-run, wall-jump or hang from. */
-const hasGrip = (mat: MaterialName) => mat !== 'leaves';
+const hasGrip = (mat: MaterialName) => !NO_GRIP.includes(mat);
 
 const box = (pos: Vec3, size: Vec3, blocksCamera: boolean, grip: boolean): Collider => ({
   min: [...pos],

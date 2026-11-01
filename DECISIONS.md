@@ -2,6 +2,20 @@
 
 Choices made where PLAN.md left things open. Each one aims for the simplest option that is fun for a 9-year-old.
 
+## City Rooftops and Moon Base levels
+
+Feedback: "generate two more levels: a city level and a moon base level."
+
+- **City Rooftops.** You run across concrete rooftops at sunset. The floors are the tops of buildings with lit-up windows down their sides, and gaps drop all the way to the street. Glass walls keep you on the path, with apartment blocks and skyscrapers all around (some have water towers). Air vents are the hurdles, steel poles the stepping stones, a steel beam the plank, and a fire-escape zig-zag climbs up.
+- **Moon Base.** You run on grey, cratered moon dust between glowing blue force fields. There are white space-station panels, metal walls to wall-run on, and moon-rock cliffs. The sky is black with stars, and the Earth hangs in it. Outside are boulders, round habitat domes with glass tops, and antennas with red lights. Pits are deep holes with no water at the bottom.
+- **Same gravity on the Moon.** Low gravity sounds fun, but every obstacle is sized and tested for normal jumps. Moon jumps would let you skip them. A floaty "moon jump" could be a special power later.
+- **18 obstacles and 5 corners each,** like the Garden Path, with a checkpoint at every corner. They use the same obstacles in a new order, plus a new **gap run**: three gaps in a row, jump, jump, then double jump.
+- **One builder, many looks.** Obstacles are written with garden materials, and each level's style swaps them (for example, wood becomes metal in the City and white panels on the Moon). So any new obstacle works in every level, and the Garden Path files came out exactly the same.
+- **Glass and force fields have no grip,** like hedges, so you can't wall-run past an obstacle on them. A test checks that every level's side walls have no grip.
+- **See-through walls showed a hidden flicker.** Where an obstacle wall stands at the edge of the path, its side and the floor's side lay on the same plane, and the hedges used to hide it. Behind glass or force fields, floors now stop 2 cm short of the walls (too thin to notice or fall into). The flicker test caught this.
+- **New surfaces,** painted in code like the rest: asphalt, building walls with windows, moon dust, moon rock, space-station panels and force field. The force field glows and slowly ripples.
+- The **level picker** shows all four levels. Level Select with a proper map comes in Phase 6.
+
 ## Touch controls (Phase 8, done early on request)
 
 Feedback: "implement mobile device touchscreen controls." Everything in the plan's touch section that the game has so far is in. Phases 4 to 7 come later and will follow these rules.
