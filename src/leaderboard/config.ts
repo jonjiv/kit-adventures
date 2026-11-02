@@ -3,5 +3,5 @@
 // public: the database only lets anyone read scores and add new ones.
 // Left empty, scores are saved on this device instead.
 
-export const SUPABASE_URL = '';
-export const SUPABASE_KEY = '';
+export const SUPABASE_URL = 'https://uxswxqnwmigcvfqjaaxq.supabase.co';
+export const SUPABASE_KEY = 'sb_publishable_qXnOph6GxKOxszhN4_1R-g_pQ07JgoD';
